@@ -14,14 +14,14 @@ import { useMediaQuery, useTheme } from '@mui/material';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const drawerWidth = 260;
+const drawerWidth = 280; // Increased width for better spacing
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
   theme?: any;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  padding: theme.spacing(3),
+  padding: theme.spacing(4), // Increased padding
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
@@ -55,9 +55,9 @@ const AppBarStyled = styled(AppBar, { shouldForwardProp: (prop) => prop !== 'ope
 const DrawerHeader = styled('div')(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
-  padding: theme.spacing(0, 1),
+  padding: theme.spacing(0, 2),
   ...theme.mixins.toolbar,
-  justifyContent: 'flex-end',
+  justifyContent: 'space-between',
 }));
 
 const Layout: React.FC = () => {
@@ -75,14 +75,14 @@ const Layout: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <AppBarStyled position="fixed" open={open}>
-        <Toolbar>
+      <AppBarStyled position="fixed" open={open} elevation={0}>
+        <Toolbar sx={{ height: 70 }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
             onClick={handleDrawerOpen}
             edge="start"
-            sx={{ mr: 2, ...(open && { display: 'none' }) }}
+            sx={{ mr: 2, ...(open && { display: 'none' }), color: 'text.primary' }}
           >
             <MenuIcon />
           </IconButton>
@@ -96,6 +96,8 @@ const Layout: React.FC = () => {
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
+            borderRight: 'none',
+            boxShadow: '4px 0 24px rgba(0,0,0,0.02)',
           },
         }}
         variant={isMobile ? 'temporary' : 'persistent'}
@@ -104,19 +106,36 @@ const Layout: React.FC = () => {
         onClose={handleDrawerClose}
       >
         <DrawerHeader>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, ml: 2 }}>
-            SDLC Platform
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontWeight: 'bold',
+              }}
+            >
+              S
+            </Box>
+            <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 700, color: 'text.primary' }}>
+              SDLC Platform
+            </Typography>
+          </Box>
           <IconButton onClick={handleDrawerClose}>
             <ChevronLeftIcon />
           </IconButton>
         </DrawerHeader>
-        <Divider />
+        <Divider sx={{ opacity: 0.5 }} />
         <Sidebar />
       </Drawer>
       <Main open={open} theme={theme}>
         <DrawerHeader />
-        <Box sx={{ py: 2 }}>
+        <Box sx={{ py: 2, maxWidth: 1600, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Main>

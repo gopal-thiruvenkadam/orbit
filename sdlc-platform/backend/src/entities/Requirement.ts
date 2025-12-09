@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { ObjectType, Field, ID, registerEnumType } from 'type-graphql';
 import { Project } from './Project';
 import { User } from './User';
 
@@ -11,6 +12,11 @@ export enum RequirementStatus {
   DEPRECATED = 'deprecated'
 }
 
+registerEnumType(RequirementStatus, {
+  name: 'RequirementStatus',
+  description: 'The status of the requirement',
+});
+
 export enum RequirementType {
   FUNCTIONAL = 'functional',
   NON_FUNCTIONAL = 'non_functional',
@@ -20,56 +26,76 @@ export enum RequirementType {
   SYSTEM = 'system'
 }
 
+registerEnumType(RequirementType, {
+  name: 'RequirementType',
+  description: 'The type of the requirement',
+});
+
+@ObjectType()
 @Entity('requirements')
 export class Requirement {
+  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Field()
   @Column()
   title: string;
 
+  @Field()
   @Column({ type: 'text' })
   description: string;
 
+  @Field(() => RequirementStatus)
   @Column({ type: 'varchar', length: 20, default: RequirementStatus.DRAFT })
   status: RequirementStatus;
 
+  @Field(() => RequirementType)
   @Column({ type: 'varchar', length: 20, default: RequirementType.FUNCTIONAL })
   type: RequirementType;
 
+  @Field()
   @Column({ type: 'varchar', length: 50 })
-  priority: 'low' | 'medium' | 'high' | 'critical';
+  priority: string;
 
+  @Field(() => ID)
   @Column({ type: 'uuid' })
   projectId: string;
 
+  @Field(() => ID)
   @Column({ type: 'uuid' })
   createdById: string;
 
+  @Field(() => ID, { nullable: true })
   @Column({ type: 'uuid', nullable: true })
   assignedToId: string | null;
 
+  @Field(() => Project)
   @ManyToOne(() => Project, (project) => project.requirements, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'projectId' })
   project: Project;
 
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'createdById' })
   createdBy: User;
 
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'assignedToId' })
   assignedTo: User | null;
 
+  @Field()
   @CreateDateColumn()
   createdAt: Date;
 
+  @Field()
   @UpdateDateColumn()
   updatedAt: Date;
 
   // Virtual property for requirement status color
   get statusColor(): string {
-    const colors = {
+    const colors: Record<string, string> = {
       [RequirementStatus.DRAFT]: 'gray',
       [RequirementStatus.IN_REVIEW]: 'blue',
       [RequirementStatus.APPROVED]: 'green',
@@ -82,7 +108,7 @@ export class Requirement {
 
   // Virtual property for priority color
   get priorityColor(): string {
-    const colors = {
+    const colors: Record<string, string> = {
       'low': 'green',
       'medium': 'blue',
       'high': 'orange',

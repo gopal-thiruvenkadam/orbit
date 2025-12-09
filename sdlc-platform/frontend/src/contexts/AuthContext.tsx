@@ -22,6 +22,7 @@ interface AuthContextType {
     firstName: string;
     lastName: string;
   }) => Promise<void>;
+  ssoLogin: (token: string) => void;
 }
 
 // Create auth context
@@ -48,7 +49,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const checkAuth = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        
+
         if (token) {
           // In a real app, we would validate the token with the server
           // For this demo, we'll just simulate a successful auth check
@@ -70,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // In a real app, we would make an API call to login
       // For this demo, we'll just simulate a successful login
       if (email === 'admin@example.com' && password === 'password') {
@@ -105,12 +106,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       setIsLoading(true);
       setError(null);
-      
+
       // In a real app, we would make an API call to register
       // For this demo, we'll just simulate a successful registration
       const mockToken = 'mock-jwt-token';
       localStorage.setItem('authToken', mockToken);
-      
+
       const newUser = {
         id: '2',
         email: userData.email,
@@ -118,7 +119,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         lastName: userData.lastName,
         role: 'user'
       };
-      
+
       setUser(newUser);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -128,6 +129,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // SSO Login function
+  const ssoLogin = (token: string) => {
+    localStorage.setItem('authToken', token);
+    setUser(mockUser);
+    navigate('/');
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -135,7 +143,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error,
     login,
     logout,
-    register
+    register,
+    ssoLogin
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -144,11 +153,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 // Custom hook to use auth context
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  
+
   return context;
 };
 

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery, gql } from '@apollo/client';
 import {
   Box,
   Typography,
@@ -30,88 +31,34 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 
-// Define workflow phases as per the Product Engineering Workflow diagram
-const workflowPhases = [
-  {
-    id: 1,
-    name: 'Strategic Planning',
-    description: 'Strategic Planning and Inception',
-    tasks: [
-      { id: 1, name: 'Project Definition', status: 'completed' },
-      { id: 2, name: 'Threat Modeling', status: 'in_progress' },
-      { id: 3, name: 'DFT Creation', status: 'completed' },
-      { id: 4, name: 'Project Risk / Issues Assessment', status: 'completed' },
-      { id: 5, name: 'Regulatory Assessment', status: 'in_progress' },
-      { id: 6, name: 'Requirements Engineering', status: 'completed' },
-      { id: 7, name: 'Resource and Budget Planning', status: 'completed' },
-      { id: 8, name: 'Traceability Matrix Creation', status: 'not_started' },
-      { id: 9, name: 'Critical Workflow Analysis', status: 'in_progress' },
-    ],
-    progress: 75,
-    status: 'in_progress'
-  },
-  {
-    id: 2,
-    name: 'Architecture & Design',
-    description: 'Architecture and System Design',
-    tasks: [
-      { id: 10, name: 'Formal Architecture Development', status: 'completed' },
-      { id: 11, name: 'Module Design with Feature Signoffs', status: 'in_progress' },
-      { id: 12, name: 'Interface Design', status: 'in_progress' },
-      { id: 13, name: 'UI Design', status: 'not_started' },
-      { id: 14, name: 'Data & UX Data Privacy', status: 'not_started' },
-      { id: 15, name: 'Security Design and Threat Modeling', status: 'not_started' },
-      { id: 16, name: 'Observability Design', status: 'not_started' },
-      { id: 17, name: 'FMEA Analysis and Design', status: 'not_started' },
-    ],
-    progress: 35,
-    status: 'in_progress'
-  },
-  {
-    id: 3,
-    name: 'Implementation',
-    description: 'Implementation and Construction',
-    tasks: [
-      { id: 18, name: 'Environment Set-up', status: 'completed' },
-      { id: 19, name: 'Code Implementation', status: 'in_progress' },
-      { id: 20, name: 'CI/CD Pipelines', status: 'in_progress' },
-      { id: 21, name: 'Automated Unit and Integration', status: 'not_started' },
-      { id: 22, name: 'Build Merge Analysis on Code Integration', status: 'not_started' },
-      { id: 23, name: 'Observability and Operational Environment', status: 'not_started' },
-    ],
-    progress: 30,
-    status: 'in_progress'
-  },
-  {
-    id: 4,
-    name: 'Testing',
-    description: 'Comprehensive Testing and Validation',
-    tasks: [
-      { id: 24, name: 'Unit Directive Testing', status: 'in_progress' },
-      { id: 25, name: 'System E2E Testing', status: 'not_started' },
-      { id: 26, name: 'Critical Workflow Testing', status: 'not_started' },
-      { id: 27, name: 'Regulatory Validation', status: 'not_started' },
-      { id: 28, name: 'Security Testing', status: 'not_started' },
-      { id: 29, name: 'Data Validation', status: 'not_started' },
-    ],
-    progress: 15,
-    status: 'in_progress'
-  },
-  {
-    id: 5,
-    name: 'Deployment',
-    description: 'Deployment and Operational Readiness',
-    tasks: [
-      { id: 30, name: 'Training and Service Readiness', status: 'not_started' },
-      { id: 31, name: 'Release Plan for Internal Field', status: 'not_started' },
-      { id: 32, name: 'Production Monitoring', status: 'not_started' },
-      { id: 33, name: 'Metric Recording and Improvement Ops', status: 'not_started' },
-      { id: 34, name: 'Deployment State Mapping', status: 'not_started' },
-    ],
-    progress: 5,
-    status: 'not_started'
+// GraphQL Queries
+const GET_PROJECTS = gql`
+  query GetProjects {
+    projects {
+      id
+      name
+    }
   }
-];
+`;
+
+const GET_PROJECT_WORKFLOW = gql`
+  query GetProjectWorkflow($projectId: ID!) {
+    getProjectWorkflow(projectId: $projectId) {
+      id
+      phaseType
+      status
+      phaseName
+      statusColor
+      isActive
+      tasks {
+        id
+        title
+        status
+        statusColor
+      }
+    }
+  }
+`;
 
 // Status to color and icon mapping
 const statusConfig = {
@@ -158,10 +105,46 @@ function a11yProps(index: number) {
 const WorkflowDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [value, setValue] = useState(0);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  const { data: projectsData } = useQuery(GET_PROJECTS, {
+    onCompleted: (data) => {
+      if (data.projects.length > 0 && !selectedProjectId) {
+        setSelectedProjectId(data.projects[0].id);
+      }
+    }
+  });
+
+  const { loading, error, data } = useQuery(GET_PROJECT_WORKFLOW, {
+    variables: { projectId: selectedProjectId },
+    skip: !selectedProjectId
+  });
 
   const handleChange = (event: React.SyntheticEvent, newValue: number) => {
     setValue(newValue);
   };
+
+  if (loading) return <Box sx={{ p: 3 }}><LinearProgress /></Box>;
+  if (error) return <Box sx={{ p: 3 }}><Typography color="error">Error: {error.message}</Typography></Box>;
+
+  const workflowPhases = data?.getProjectWorkflow || [];
+
+  // Map backend data to UI structure if needed, or use directly
+  // The UI expects: id, name, description, tasks (id, name, status), progress, status
+  // Our backend returns: id, phaseType, phaseName, status, statusColor, tasks (id, title, status, statusColor)
+
+  const mappedPhases = workflowPhases.map((phase: any, index: number) => ({
+    id: phase.id,
+    name: phase.phaseName,
+    description: phase.phaseType, // Using type as description for now
+    tasks: phase.tasks.map((task: any) => ({
+      id: task.id,
+      name: task.title,
+      status: task.status
+    })),
+    progress: phase.status === 'completed' ? 100 : (phase.status === 'in_progress' ? 50 : 0), // Mock progress based on status
+    status: phase.status
+  }));
 
   return (
     <Box>
@@ -169,194 +152,155 @@ const WorkflowDashboard: React.FC = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Product Engineering Workflow
         </Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           color="primary"
-          onClick={() => navigate('/projects/1/workflow/new')}
+          onClick={() => navigate('/projects/new')}
         >
           Start New Workflow
         </Button>
       </Box>
 
-      <Paper sx={{ width: '100%', mb: 4 }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs 
-            value={value} 
-            onChange={handleChange} 
-            variant="scrollable"
-            scrollButtons="auto"
-            aria-label="workflow phases tabs"
+      {mappedPhases.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary">
+            No workflow phases found for this project.
+          </Typography>
+          <Button
+            variant="outlined"
+            sx={{ mt: 2 }}
+            onClick={() => navigate('/projects')}
           >
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>Phase 1: Planning</Typography>
-                  <Chip 
-                    size="small" 
-                    label="75%" 
-                    color="primary" 
-                    sx={{ ml: 1, height: '20px' }} 
-                  />
-                </Box>
-              } 
-              {...a11yProps(0)} 
-            />
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>Phase 2: Architecture</Typography>
-                  <Chip 
-                    size="small" 
-                    label="35%" 
-                    color="primary" 
-                    sx={{ ml: 1, height: '20px' }} 
-                  />
-                </Box>
-              } 
-              {...a11yProps(1)} 
-            />
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>Phase 3: Implementation</Typography>
-                  <Chip 
-                    size="small" 
-                    label="30%" 
-                    color="primary" 
-                    sx={{ ml: 1, height: '20px' }} 
-                  />
-                </Box>
-              } 
-              {...a11yProps(2)} 
-            />
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>Phase 4: Testing</Typography>
-                  <Chip 
-                    size="small" 
-                    label="15%" 
-                    color="primary" 
-                    sx={{ ml: 1, height: '20px' }} 
-                  />
-                </Box>
-              } 
-              {...a11yProps(3)} 
-            />
-            <Tab 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>Phase 5: Deployment</Typography>
-                  <Chip 
-                    size="small" 
-                    label="5%" 
-                    color="primary" 
-                    sx={{ ml: 1, height: '20px' }} 
-                  />
-                </Box>
-              } 
-              {...a11yProps(4)} 
-            />
-          </Tabs>
-        </Box>
-
-        {workflowPhases.map((phase, index) => (
-          <TabPanel key={phase.id} value={value} index={index}>
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h5" gutterBottom>
-                Phase {index + 1}: {phase.name}
-              </Typography>
-              <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                {phase.description}
-              </Typography>
-              
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 3 }}>
-                <Box sx={{ flexGrow: 1, mr: 2 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="body2">Progress</Typography>
-                    <Typography variant="body2">{phase.progress}%</Typography>
-                  </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={phase.progress} 
-                    sx={{ mt: 0.5, height: 8, borderRadius: 1 }} 
-                  />
-                </Box>
-                <Chip 
-                  label={phase.status.replace('_', ' ')} 
-                  color={statusConfig[phase.status as keyof typeof statusConfig].color as any} 
-                />
-              </Box>
-            </Box>
-
-            <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
-              Tasks & Activities
-            </Typography>
-            
-            <Grid container spacing={3}>
-              {phase.tasks.map((task) => (
-                <Grid item xs={12} md={6} key={task.id}>
-                  <Card variant="outlined">
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          {statusConfig[task.status as keyof typeof statusConfig].icon}
-                          <Typography variant="subtitle1" sx={{ ml: 1 }}>
-                            {task.name}
-                          </Typography>
-                        </Box>
-                        <Chip 
-                          label={task.status.replace('_', ' ')} 
+            Go to Projects
+          </Button>
+        </Paper>
+      ) : (
+        <>
+          <Paper sx={{ width: '100%', mb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs
+                value={value}
+                onChange={handleChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                aria-label="workflow phases tabs"
+              >
+                {mappedPhases.map((phase: any, index: number) => (
+                  <Tab
+                    key={phase.id}
+                    label={
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Typography>Phase {index + 1}: {phase.name.split(' ')[0]}</Typography>
+                        <Chip
                           size="small"
-                          color={statusConfig[task.status as keyof typeof statusConfig].color as any}
+                          label={`${phase.progress}%`}
+                          color={phase.status === 'completed' ? 'success' : 'primary'}
+                          sx={{ ml: 1, height: '20px' }}
                         />
                       </Box>
-                      
-                      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-                        <Tooltip title="View Details">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => navigate(`/workflow/${phase.id}/task/${task.id}`)}
-                          >
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Edit Task">
-                          <IconButton 
-                            size="small" 
-                            onClick={() => navigate(`/workflow/${phase.id}/task/${task.id}/edit`)}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-            
-            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
-              <Button 
-                variant="outlined" 
-                disabled={index === 0}
-                onClick={() => setValue(index - 1)}
-              >
-                Previous Phase
-              </Button>
-              <Button 
-                variant="contained" 
-                endIcon={<ArrowForwardIcon />}
-                disabled={index === workflowPhases.length - 1}
-                onClick={() => setValue(index + 1)}
-              >
-                Next Phase
-              </Button>
+                    }
+                    {...a11yProps(index)}
+                  />
+                ))}
+              </Tabs>
             </Box>
-          </TabPanel>
-        ))}
-      </Paper>
-      
+
+            {mappedPhases.map((phase: any, index: number) => (
+              <TabPanel key={phase.id} value={value} index={index}>
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="h5" gutterBottom>
+                    Phase {index + 1}: {phase.name}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 2, mb: 3 }}>
+                    <Box sx={{ flexGrow: 1, mr: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2">Progress</Typography>
+                        <Typography variant="body2">{phase.progress}%</Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={phase.progress}
+                        sx={{ mt: 0.5, height: 8, borderRadius: 1 }}
+                      />
+                    </Box>
+                    <Chip
+                      label={phase.status.replace('_', ' ')}
+                      color={statusConfig[phase.status as keyof typeof statusConfig]?.color as any || 'default'}
+                    />
+                  </Box>
+                </Box>
+
+                <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
+                  Tasks & Activities
+                </Typography>
+
+                <Grid container spacing={3}>
+                  {phase.tasks.map((task: any) => (
+                    <Grid item xs={12} md={6} key={task.id}>
+                      <Card variant="outlined">
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              {statusConfig[task.status as keyof typeof statusConfig]?.icon || <InfoOutlinedIcon />}
+                              <Typography variant="subtitle1" sx={{ ml: 1 }}>
+                                {task.name}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={task.status.replace('_', ' ')}
+                              size="small"
+                              color={statusConfig[task.status as keyof typeof statusConfig]?.color as any || 'default'}
+                            />
+                          </Box>
+
+                          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                            <Tooltip title="View Details">
+                              <IconButton
+                                size="small"
+                                onClick={() => navigate(`/workflow/${phase.id}/task/${task.id}`)}
+                              >
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Edit Task">
+                              <IconButton
+                                size="small"
+                                onClick={() => navigate(`/workflow/${phase.id}/task/${task.id}/edit`)}
+                              >
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <Button
+                    variant="outlined"
+                    disabled={index === 0}
+                    onClick={() => setValue(index - 1)}
+                  >
+                    Previous Phase
+                  </Button>
+                  <Button
+                    variant="contained"
+                    endIcon={<ArrowForwardIcon />}
+                    disabled={index === mappedPhases.length - 1}
+                    onClick={() => setValue(index + 1)}
+                  >
+                    Next Phase
+                  </Button>
+                </Box>
+              </TabPanel>
+            ))}
+          </Paper>
+        </>
+      )}
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
@@ -368,18 +312,18 @@ const WorkflowDashboard: React.FC = () => {
                 <ListItemIcon>
                   <InfoOutlinedIcon />
                 </ListItemIcon>
-                <ListItemText 
-                  primary="Overall Progress" 
+                <ListItemText
+                  primary="Overall Progress"
                   secondary={
                     <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                      <LinearProgress 
-                        variant="determinate" 
-                        value={32} 
-                        sx={{ flexGrow: 1, height: 8, borderRadius: 1 }} 
+                      <LinearProgress
+                        variant="determinate"
+                        value={32}
+                        sx={{ flexGrow: 1, height: 8, borderRadius: 1 }}
                       />
                       <Typography variant="body2" sx={{ ml: 2 }}>32%</Typography>
                     </Box>
-                  } 
+                  }
                 />
               </ListItem>
               <Divider />
@@ -406,7 +350,7 @@ const WorkflowDashboard: React.FC = () => {
             </List>
           </Paper>
         </Grid>
-        
+
         <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
@@ -448,9 +392,9 @@ const WorkflowDashboard: React.FC = () => {
                 <ListItemText primary="Environment Record" secondary="Not Started" />
               </ListItem>
             </List>
-            <Button 
-              variant="outlined" 
-              fullWidth 
+            <Button
+              variant="outlined"
+              fullWidth
               sx={{ mt: 2 }}
               onClick={() => navigate('/quality')}
             >

@@ -9,6 +9,7 @@ import { theme } from './theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { SnackbarProvider } from 'notistack';
+import { ApolloClient, InMemoryCache, ApolloProvider } from '@apollo/client';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,22 +22,30 @@ const queryClient = new QueryClient({
   },
 });
 
+// Initialize Apollo Client
+const apolloClient = new ApolloClient({
+  uri: process.env.REACT_APP_API_URL || 'http://localhost:4000/graphql',
+  cache: new InMemoryCache(),
+});
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 
 root.render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <SnackbarProvider maxSnack={3}>
-            <App />
-          </SnackbarProvider>
-        </ThemeProvider>
-      </BrowserRouter>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
+    <ApolloProvider client={apolloClient}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <SnackbarProvider maxSnack={3}>
+              <App />
+            </SnackbarProvider>
+          </ThemeProvider>
+        </BrowserRouter>
+
+      </QueryClientProvider>
+    </ApolloProvider>
   </React.StrictMode>
 );

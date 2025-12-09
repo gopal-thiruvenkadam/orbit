@@ -9,24 +9,27 @@ import Divider from '@mui/material/Divider';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Collapse from '@mui/material/Collapse';
+import { alpha, useTheme } from '@mui/material/styles';
 
 // Icons
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ArchitectureIcon from '@mui/icons-material/Architecture';
-import CodeIcon from '@mui/icons-material/Code';
-import BugReportIcon from '@mui/icons-material/BugReport';
-import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import DescriptionIcon from '@mui/icons-material/Description';
-import GroupIcon from '@mui/icons-material/Group';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
+import DashboardIcon from '@mui/icons-material/DashboardRounded';
+import AssignmentIcon from '@mui/icons-material/AssignmentRounded';
+import ArchitectureIcon from '@mui/icons-material/ArchitectureRounded';
+import CodeIcon from '@mui/icons-material/CodeRounded';
+import BugReportIcon from '@mui/icons-material/BugReportRounded';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunchRounded';
+import VerifiedIcon from '@mui/icons-material/VerifiedRounded';
+import DescriptionIcon from '@mui/icons-material/DescriptionRounded';
+import GroupIcon from '@mui/icons-material/GroupRounded';
+import SettingsIcon from '@mui/icons-material/SettingsRounded';
+import ExpandLess from '@mui/icons-material/ExpandLessRounded';
+import ExpandMore from '@mui/icons-material/ExpandMoreRounded';
+import TrendingUpIcon from '@mui/icons-material/TrendingUpRounded';
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [openWorkflow, setOpenWorkflow] = React.useState(true);
   const [openQuality, setOpenQuality] = React.useState(false);
 
@@ -42,257 +45,305 @@ const Sidebar: React.FC = () => {
     return location.pathname === path;
   };
 
+  const ListHeader = ({ title }: { title: string }) => (
+    <Typography
+      variant="caption"
+      sx={{
+        px: 3,
+        py: 2,
+        display: 'block',
+        color: 'text.secondary',
+        fontWeight: 700,
+        fontSize: '0.75rem',
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+      }}
+    >
+      {title}
+    </Typography>
+  );
+
+  const listItemSx = {
+    mb: 0.5,
+    borderRadius: 2,
+    mx: 1,
+    '&.Mui-selected': {
+      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+      '&:hover': {
+        backgroundColor: alpha(theme.palette.primary.main, 0.15),
+      },
+      '& .MuiListItemIcon-root': {
+        color: 'primary.main',
+      },
+      '& .MuiListItemText-primary': {
+        color: 'primary.main',
+        fontWeight: 600,
+      },
+    },
+    '&:hover': {
+      backgroundColor: alpha(theme.palette.action.hover, 0.05),
+    },
+  };
+
+  const subListItemSx = {
+    ...listItemSx,
+    pl: 4,
+    mx: 1,
+    mb: 0.5,
+  };
+
   return (
-    <>
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton 
+    <Box sx={{ pb: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <List component="nav" sx={{ px: 0, pt: 2, flex: 1 }}>
+        <ListItem disablePadding sx={{ width: 'auto' }}>
+          <ListItemButton
             selected={isActiveRoute('/')}
             onClick={() => navigate('/')}
+            sx={listItemSx}
           >
-            <ListItemIcon>
+            <ListItemIcon sx={{ minWidth: 40 }}>
               <DashboardIcon />
             </ListItemIcon>
-            <ListItemText primary="Dashboard" />
+            <ListItemText primary="Dashboard" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
           </ListItemButton>
         </ListItem>
-        
-        <ListItemButton onClick={handleWorkflowClick}>
-          <ListItemIcon>
+
+        <ListHeader title="Engineering" />
+
+        <ListItemButton onClick={handleWorkflowClick} sx={listItemSx}>
+          <ListItemIcon sx={{ minWidth: 40 }}>
             <AssignmentIcon />
           </ListItemIcon>
-          <ListItemText primary="Engineering Workflow" />
+          <ListItemText primary="Workflow" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
           {openWorkflow ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
-        
+
         <Collapse in={openWorkflow} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            {/* Phase 1: Strategic Planning */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/workflow/planning')}
               onClick={() => navigate('/workflow/planning')}
             >
-              <ListItemIcon>
-                <DescriptionIcon />
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <DescriptionIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Phase 1: Planning" 
-                secondary="Strategic Planning and Inception" 
-                secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-              />
+              <ListItemText primary="Planning" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* Phase 2: Architecture */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/workflow/architecture')}
               onClick={() => navigate('/workflow/architecture')}
             >
-              <ListItemIcon>
-                <ArchitectureIcon />
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <ArchitectureIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Phase 2: Architecture" 
-                secondary="Architecture and System Design"
-                secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-              />
+              <ListItemText primary="Architecture" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* Phase 3: Implementation */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/workflow/implementation')}
               onClick={() => navigate('/workflow/implementation')}
             >
-              <ListItemIcon>
-                <CodeIcon />
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <CodeIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Phase 3: Implementation" 
-                secondary="Implementation and Construction"
-                secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-              />
+              <ListItemText primary="Implementation" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* Phase 4: Testing */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/workflow/testing')}
               onClick={() => navigate('/workflow/testing')}
             >
-              <ListItemIcon>
-                <BugReportIcon />
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <BugReportIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Phase 4: Testing" 
-                secondary="Comprehensive Testing and Validation"
-                secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-              />
+              <ListItemText primary="Testing" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* Phase 5: Deployment */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/workflow/deployment')}
               onClick={() => navigate('/workflow/deployment')}
             >
-              <ListItemIcon>
-                <RocketLaunchIcon />
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <RocketLaunchIcon fontSize="small" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Phase 5: Deployment" 
-                secondary="Deployment and Operational Readiness"
-                secondaryTypographyProps={{ noWrap: true, fontSize: 12 }}
-              />
+              <ListItemText primary="Deployment" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
           </List>
         </Collapse>
-        
-        <ListItemButton onClick={handleQualityClick}>
-          <ListItemIcon>
+
+        <ListItemButton onClick={handleQualityClick} sx={listItemSx}>
+          <ListItemIcon sx={{ minWidth: 40 }}>
             <VerifiedIcon />
           </ListItemIcon>
-          <ListItemText primary="Quality Management" />
+          <ListItemText primary="Quality" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
           {openQuality ? <ExpandLess /> : <ExpandMore />}
         </ListItemButton>
-        
+
         <Collapse in={openQuality} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            {/* QM Phase 1 */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/quality/building-phase')}
               onClick={() => navigate('/quality/building-phase')}
             >
-              <ListItemText primary="Building Phase" />
+              <ListItemText primary="Building Phase" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* QM Phase 2 */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/quality/qa')}
               onClick={() => navigate('/quality/qa')}
             >
-              <ListItemText primary="QA" />
+              <ListItemText primary="QA" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* QM Phase 3 */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/quality/uat')}
               onClick={() => navigate('/quality/uat')}
             >
-              <ListItemText primary="UAT" />
+              <ListItemText primary="UAT" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* QM Phase 4 */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/quality/sqa-sqct')}
               onClick={() => navigate('/quality/sqa-sqct')}
             >
-              <ListItemText primary="SQA/SQCT" />
+              <ListItemText primary="SQA/SQCT" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
-            
-            {/* QM Phase 5 */}
-            <ListItemButton 
-              sx={{ pl: 4 }} 
+
+            <ListItemButton
+              sx={subListItemSx}
               selected={isActiveRoute('/quality/environment')}
               onClick={() => navigate('/quality/environment')}
             >
-              <ListItemText primary="Environment Record" />
+              <ListItemText primary="Environment Record" primaryTypographyProps={{ fontSize: '0.9rem' }} />
             </ListItemButton>
           </List>
         </Collapse>
+
+        <Divider sx={{ my: 2, mx: 3, opacity: 0.1 }} />
+
+        <ListHeader title="Management" />
+
+        <List component="nav" sx={{ px: 0 }}>
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/okr')}
+              onClick={() => navigate('/okr')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <TrendingUpIcon />
+              </ListItemIcon>
+              <ListItemText primary="OKRs" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/projects')}
+              onClick={() => navigate('/projects')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <AssignmentIcon />
+              </ListItemIcon>
+              <ListItemText primary="Projects" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/requirements')}
+              onClick={() => navigate('/requirements')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <DescriptionIcon />
+              </ListItemIcon>
+              <ListItemText primary="Requirements" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/test-cases')}
+              onClick={() => navigate('/test-cases')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <BugReportIcon />
+              </ListItemIcon>
+              <ListItemText primary="Test Cases" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/deployments')}
+              onClick={() => navigate('/deployments')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <RocketLaunchIcon />
+              </ListItemIcon>
+              <ListItemText primary="Deployments" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/team')}
+              onClick={() => navigate('/team')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <GroupIcon />
+              </ListItemIcon>
+              <ListItemText primary="Team" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/team/capacity')}
+              onClick={() => navigate('/team/capacity')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <AssignmentIcon />
+              </ListItemIcon>
+              <ListItemText primary="Capacity" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+        </List>
+
+        <Divider sx={{ my: 2, mx: 3, opacity: 0.1 }} />
+
+        <List component="nav" sx={{ px: 0 }}>
+          <ListItem disablePadding sx={{ mb: 0.5 }}>
+            <ListItemButton
+              selected={isActiveRoute('/settings')}
+              onClick={() => navigate('/settings')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <SettingsIcon />
+              </ListItemIcon>
+              <ListItemText primary="Settings" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+        </List>
+
       </List>
-      
-      <Divider />
-      
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/projects')}
-            onClick={() => navigate('/projects')}
-          >
-            <ListItemIcon>
-              <AssignmentIcon />
-            </ListItemIcon>
-            <ListItemText primary="Projects" />
-          </ListItemButton>
-        </ListItem>
-        
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/requirements')}
-            onClick={() => navigate('/requirements')}
-          >
-            <ListItemIcon>
-              <DescriptionIcon />
-            </ListItemIcon>
-            <ListItemText primary="Requirements" />
-          </ListItemButton>
-        </ListItem>
-        
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/test-cases')}
-            onClick={() => navigate('/test-cases')}
-          >
-            <ListItemIcon>
-              <BugReportIcon />
-            </ListItemIcon>
-            <ListItemText primary="Test Cases" />
-          </ListItemButton>
-        </ListItem>
-        
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/deployments')}
-            onClick={() => navigate('/deployments')}
-          >
-            <ListItemIcon>
-              <RocketLaunchIcon />
-            </ListItemIcon>
-            <ListItemText primary="Deployments" />
-          </ListItemButton>
-        </ListItem>
-        
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/team')}
-            onClick={() => navigate('/team')}
-          >
-            <ListItemIcon>
-              <GroupIcon />
-            </ListItemIcon>
-            <ListItemText primary="Team" />
-          </ListItemButton>
-        </ListItem>
-      </List>
-      
-      <Divider />
-      
-      <List>
-        <ListItem disablePadding>
-          <ListItemButton 
-            selected={isActiveRoute('/settings')}
-            onClick={() => navigate('/settings')}
-          >
-            <ListItemIcon>
-              <SettingsIcon />
-            </ListItemIcon>
-            <ListItemText primary="Settings" />
-          </ListItemButton>
-        </ListItem>
-      </List>
-      
-      <Box sx={{ mt: 'auto', p: 2 }}>
-        <Typography variant="body2" color="text.secondary" align="center">
-          SDLC Platform v1.0
-        </Typography>
-      </Box>
-    </>
+    </Box>
   );
 };
 

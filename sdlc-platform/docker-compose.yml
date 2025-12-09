@@ -1,59 +1,52 @@
-version: '3.8'
-
 services:
-  # PostgreSQL database
-  db:
-    image: postgres:13-alpine
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=sdlc_platform
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # Backend API service
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - NODE_ENV=development
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
-      - DB_NAME=sdlc_platform
-      - JWT_SECRET=local_development_secret
-      - JWT_EXPIRES_IN=7d
-      - CORS_ORIGIN=http://localhost:3000
-    ports:
-      - "4000:4000"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
-
-  # Frontend web application
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:80"
-    depends_on:
-      - backend
+      - 13000:13000
+    environment:
+      - PORT=13000
+      - REACT_APP_API_URL=http://localhost:14000/graphql
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - 14000:14000
+    environment:
+      - PORT=14000
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=7777
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=sdlc_platform
+      - JWT_SECRET=dev_secret
+      - CORS_ORIGIN=http://localhost:13000
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:14-alpine
+    command: -p 7777
+    ports:
+      - 7778:7777
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=sdlc_platform
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
 volumes:
   postgres_data:

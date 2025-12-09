@@ -1,29 +1,19 @@
-# Build stage
-FROM node:18-alpine AS builder
+FROM node:18
 
 WORKDIR /app
 
+# Set NODE_TLS_REJECT_UNAUTHORIZED to bypass SSL issues
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
 # Copy package files and install dependencies
 COPY package*.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Copy source files
 COPY . .
 
-# Build the application
-RUN npm run build
+# Expose the port the app runs on (React default)
+EXPOSE 13000
 
-# Production stage
-FROM nginx:alpine
-
-# Copy built files from builder stage to nginx serve directory
-COPY --from=builder /app/build /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose the port nginx is running on
-EXPOSE 80
-
-# Start nginx server
-CMD ["nginx", "-g", "daemon off;"]
+# Start the app in development mode
+CMD ["npm", "start"]

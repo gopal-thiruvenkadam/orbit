@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { ObjectType, Field, ID, registerEnumType } from 'type-graphql';
 import { WorkflowPhase } from './WorkflowPhase';
 import { User } from './User';
 import { Project } from './Project';
@@ -32,7 +33,7 @@ export enum PhaseTask {
   CRITICAL_WORKFLOW_ANALYSIS = 'critical_workflow_analysis',
   PRODUCT_FUNCTION_DEVELOPMENT = 'product_function_development',
   JIRA_API_QUALITY_INTEGRATION = 'jira_api_quality_integration',
-  
+
   // Phase 2: Architecture and System Design
   FORMAL_ARCHITECTURE_DEVELOPMENT = 'formal_architecture_development',
   MODULE_DESIGN_WITH_FEATURE_SIGN_OFF = 'module_design_with_feature_sign_off',
@@ -47,7 +48,7 @@ export enum PhaseTask {
   PROJECT_GMP = 'project_gmp',
   COMPREHENSIVE_TEST_PLANNING_READY = 'comprehensive_test_planning_ready',
   INITIAL_FMEA_REPORTS = 'initial_fmea_reports',
-  
+
   // Phase 3: Implementation and Construction
   ENVIRONMENT_SET_UP = 'environment_set_up',
   CODE_IMPLEMENTATION = 'code_implementation',
@@ -62,7 +63,7 @@ export enum PhaseTask {
   EVIDENCE_REPORTS_SPECS_TEST_COVERAGE = 'evidence_reports_specs_test_coverage',
   TECHNICAL_DESIGN = 'technical_design',
   OPERATIONAL_IMPLEMENTATION_REPORTS = 'operational_implementation_reports',
-  
+
   // Phase 4: Comprehensive Testing and Validation
   UNIT_DIRECTIVE_TESTING = 'unit_directive_testing',
   SYSTEM_E2E_TESTING = 'system_e2e_testing',
@@ -77,7 +78,7 @@ export enum PhaseTask {
   TEST_REPORTS = 'test_reports',
   RISK_FMEA_REPORTS = 'risk_fmea_reports',
   PROGRESS_BUG_REPORTS_KPIS = 'progress_bug_reports_kpis',
-  
+
   // Phase 5: Deployment and Operational Readiness
   TRAINING_SERVICE_READINESS = 'training_service_readiness',
   RELEASE_PLAN_INTERNAL_FIELD_PLANNED_BROAD = 'release_plan_internal_field_planned_broad',
@@ -91,35 +92,61 @@ export enum PhaseTask {
   TECHNICAL_COMMERCIAL_RELEASE_NOTES = 'technical_commercial_release_notes'
 }
 
+registerEnumType(TaskStatus, {
+  name: 'TaskStatus',
+  description: 'The status of the workflow task',
+});
+
+registerEnumType(TaskPriority, {
+  name: 'TaskPriority',
+  description: 'The priority of the workflow task',
+});
+
+registerEnumType(PhaseTask, {
+  name: 'PhaseTask',
+  description: 'The specific task type in the workflow',
+});
+
+@ObjectType()
 @Entity('workflow_tasks')
 export class WorkflowTask {
+  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Field()
   @Column()
   title: string;
 
+  @Field(() => String, { nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Field(() => PhaseTask)
   @Column({ type: 'varchar', length: 50 })
   taskType: PhaseTask;
 
+  @Field(() => TaskStatus)
   @Column({ type: 'varchar', length: 20 })
   status: TaskStatus;
 
+  @Field(() => TaskPriority)
   @Column({ type: 'varchar', length: 20 })
   priority: TaskPriority;
 
+  @Field(() => ID)
   @Column({ type: 'uuid' })
   phaseId: string;
 
+  @Field(() => ID)
   @Column({ type: 'uuid' })
   projectId: string;
 
+  @Field(() => ID, { nullable: true })
   @Column({ type: 'uuid', nullable: true })
   assignedToId: string | null;
 
+  @Field(() => Date, { nullable: true })
   @Column({ type: 'date', nullable: true })
   dueDate: Date | null;
 
@@ -129,25 +156,31 @@ export class WorkflowTask {
   @Column({ type: 'jsonb', nullable: true })
   integrations: Record<string, any> | null;
 
+  @Field(() => WorkflowPhase)
   @ManyToOne(() => WorkflowPhase, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'phaseId' })
   phase: WorkflowPhase;
 
+  @Field(() => Project)
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'projectId' })
   project: Project;
 
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'assignedToId' })
   assignedTo: User | null;
 
+  @Field()
   @CreateDateColumn()
   createdAt: Date;
 
+  @Field()
   @UpdateDateColumn()
   updatedAt: Date;
 
   // Get status color
+  @Field()
   get statusColor(): string {
     const colors = {
       [TaskStatus.TODO]: 'gray',
@@ -160,6 +193,7 @@ export class WorkflowTask {
   }
 
   // Get priority color
+  @Field()
   get priorityColor(): string {
     const colors = {
       [TaskPriority.LOW]: 'green',

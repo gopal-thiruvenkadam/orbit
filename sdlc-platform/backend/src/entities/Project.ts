@@ -1,8 +1,11 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { ObjectType, Field, ID, registerEnumType, Int } from 'type-graphql';
 import { User } from './User';
 import { Requirement } from './Requirement';
 import { TestCase } from './TestCase';
 import { Deployment } from './Deployment';
+import { Objective } from './Objective';
+import { ProjectAllocation } from './ProjectAllocation';
 
 export enum ProjectStatus {
   PLANNING = 'planning',
@@ -12,39 +15,73 @@ export enum ProjectStatus {
   CANCELLED = 'cancelled'
 }
 
+registerEnumType(ProjectStatus, {
+  name: 'ProjectStatus',
+  description: 'The status of the project',
+});
+
+@ObjectType()
 @Entity('projects')
 export class Project {
+  @Field(() => ID)
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Field()
   @Column()
   name: string;
 
+  @Field(() => String, { nullable: true })
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Field(() => ProjectStatus)
   @Column({ type: 'varchar', length: 50 })
   status: ProjectStatus;
 
+  @Field(() => Int, { defaultValue: 0 })
+  @Column({ type: 'int', default: 0 })
+  progress: number;
+
+  @Field(() => String, { nullable: true })
+  @Column({ type: 'varchar', nullable: true })
+  currentPhase: string | null;
+
+  @Field(() => Date, { nullable: true })
   @Column({ type: 'date', nullable: true })
   startDate: Date | null;
 
+  @Field(() => Date, { nullable: true })
   @Column({ type: 'date', nullable: true })
   targetEndDate: Date | null;
 
+  @Field(() => Date, { nullable: true })
   @Column({ type: 'date', nullable: true })
   actualEndDate: Date | null;
 
+  @Field(() => ID, { nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  objectiveId: string | null;
+
+  @Field(() => Objective, { nullable: true })
+  @ManyToOne(() => Objective, (objective) => objective.projects, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'objectiveId' })
+  objective: Objective | null;
+
+  @Field(() => ID)
   @Column({ type: 'uuid' })
   ownerId: string;
 
+  @Field(() => ID, { nullable: true })
   @Column({ type: 'uuid', nullable: true })
   leadId: string | null;
 
+  @Field(() => User)
   @ManyToOne(() => User, (user) => user.ownedProjects, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'ownerId' })
   owner: User;
 
+  @Field(() => User, { nullable: true })
   @ManyToOne(() => User, (user) => user.leadProjects, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'leadId' })
   lead: User | null;
@@ -58,13 +95,20 @@ export class Project {
   @OneToMany(() => Deployment, (deployment) => deployment.project)
   deployments: Deployment[];
 
+  @Field(() => [ProjectAllocation], { nullable: true })
+  @OneToMany(() => ProjectAllocation, (allocation) => allocation.project)
+  allocations: ProjectAllocation[];
+
+  @Field()
   @CreateDateColumn()
   createdAt: Date;
 
+  @Field()
   @UpdateDateColumn()
   updatedAt: Date;
 
   // Virtual property for project duration in days
+  @Field(() => Int, { nullable: true })
   get durationInDays(): number | null {
     if (!this.startDate) return null;
     const endDate = this.actualEndDate || new Date();
@@ -73,6 +117,7 @@ export class Project {
   }
 
   // Virtual property to check if project is active
+  @Field()
   get isActive(): boolean {
     return [ProjectStatus.PLANNING, ProjectStatus.IN_PROGRESS].includes(this.status as ProjectStatus);
   }
