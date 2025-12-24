@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Arg, ID } from 'type-graphql';
+import { Resolver, Query, Mutation, Arg, ID, Float } from 'type-graphql';
 import { StrategicGoal, GoalStatus } from '../entities/StrategicGoal';
 import { Objective } from '../entities/Objective';
 import { KeyResult } from '../entities/KeyResult';
@@ -21,13 +21,19 @@ export class OKRResolver {
     async createStrategicGoal(
         @Arg('title') title: string,
         @Arg('description', { nullable: true }) description?: string,
-        @Arg('ownerIds', () => [String], { nullable: true }) ownerIds?: string[]
+        @Arg('ownerIds', () => [String], { nullable: true }) ownerIds?: string[],
+        @Arg('targetAchievement', () => Float, { defaultValue: 100 }) targetAchievement?: number
     ): Promise<StrategicGoal> {
         let owners: User[] = [];
         if (ownerIds && ownerIds.length > 0) {
             owners = await AppDataSource.getRepository(User).findByIds(ownerIds);
         }
-        const goal = this.goalRepo.create({ title, description, owners });
+        const goal = this.goalRepo.create({
+            title,
+            description,
+            owners,
+            targetAchievement
+        });
         return this.goalRepo.save(goal);
     }
 
@@ -37,14 +43,20 @@ export class OKRResolver {
         @Arg('title', { nullable: true }) title?: string,
         @Arg('description', { nullable: true }) description?: string,
         @Arg('status', { nullable: true }) status?: string,
-        @Arg('ownerIds', () => [String], { nullable: true }) ownerIds?: string[]
+        @Arg('ownerIds', () => [String], { nullable: true }) ownerIds?: string[],
+        @Arg('targetAchievement', () => Float, { nullable: true }) targetAchievement?: number
     ): Promise<StrategicGoal> {
         const goal = await this.goalRepo.findOne({ where: { id }, relations: ['owners'] });
         if (!goal) throw new Error('Strategic Goal not found');
 
         if (title !== undefined) goal.title = title;
         if (description !== undefined) goal.description = description;
-        if (status !== undefined) goal.status = status as GoalStatus;
+        if (status !== undefined) {
+            // Default to NOT_STARTED if empty string or invalid? 
+            // Ideally we just take the value. But if user sends empty string, we want NOT_STARTED?
+            goal.status = (status || GoalStatus.NOT_STARTED) as GoalStatus;
+        }
+        if (targetAchievement !== undefined) goal.targetAchievement = targetAchievement;
         if (ownerIds !== undefined) {
             goal.owners = await AppDataSource.getRepository(User).findByIds(ownerIds);
         }
@@ -141,5 +153,32 @@ export class OKRResolver {
         if (!kr) throw new Error('KeyResult not found');
         kr.currentValue = currentValue;
         return this.keyResultRepo.save(kr);
+    }
+
+    @Mutation(() => KeyResult)
+    async updateKeyResult(
+        @Arg('id') id: string,
+        @Arg('title', { nullable: true }) title?: string,
+        @Arg('targetValue', { nullable: true }) targetValue?: number,
+        @Arg('startValue', { nullable: true }) startValue?: number,
+        @Arg('currentValue', { nullable: true }) currentValue?: number,
+        @Arg('metricType', { nullable: true }) metricType?: string
+    ): Promise<KeyResult> {
+        const kr = await this.keyResultRepo.findOne({ where: { id } });
+        if (!kr) throw new Error('KeyResult not found');
+
+        if (title !== undefined) kr.title = title;
+        if (targetValue !== undefined) kr.targetValue = targetValue;
+        if (startValue !== undefined) kr.startValue = startValue;
+        if (currentValue !== undefined) kr.currentValue = currentValue;
+        if (metricType !== undefined) kr.metricType = metricType;
+
+        return this.keyResultRepo.save(kr);
+    }
+
+    @Mutation(() => Boolean)
+    async deleteKeyResult(@Arg('id') id: string): Promise<boolean> {
+        const result = await this.keyResultRepo.delete(id);
+        return result.affected !== 0;
     }
 }

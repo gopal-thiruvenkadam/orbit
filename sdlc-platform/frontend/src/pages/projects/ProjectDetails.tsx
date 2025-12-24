@@ -48,7 +48,9 @@ import {
   CheckCircle as CheckCircleIcon,
   RadioButtonUnchecked as UncheckedIcon,
   VerifiedUser as VerifiedIcon,
-  AccountTree as WorkflowIcon
+  AccountTree as WorkflowIcon,
+  Link as LinkIcon,
+  Groups as TeamIcon
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 
@@ -97,6 +99,7 @@ const GET_PROJECT = gql`
           title
           status
           priority
+          resourceLink
         }
       }
       qualityManagement {
@@ -104,7 +107,24 @@ const GET_PROJECT = gql`
         phase
         status
         deliverables
+        resourceLink
       }
+
+      allocations {
+        id
+        allocationPercentage
+        role
+        startDate
+        endDate
+        user {
+          id
+          firstName
+          lastName
+          email
+          position
+        }
+      }
+
     }
   }
 `;
@@ -157,23 +177,25 @@ const INITIALIZE_QUALITY = gql`
 `;
 
 const CREATE_TASK = gql`
-  mutation CreateTask($projectId: ID!, $phaseId: ID!, $title: String!, $taskType: String!, $priority: String!, $status: String!) {
-    createTask(projectId: $projectId, phaseId: $phaseId, title: $title, taskType: $taskType, priority: $priority, status: $status) {
+  mutation CreateTask($projectId: ID!, $phaseId: ID!, $title: String!, $taskType: String!, $priority: String!, $status: String!, $resourceLink: String) {
+    createTask(projectId: $projectId, phaseId: $phaseId, title: $title, taskType: $taskType, priority: $priority, status: $status, resourceLink: $resourceLink) {
       id
       title
       status
       priority
+      resourceLink
     }
   }
 `;
 
 const UPDATE_TASK = gql`
-  mutation UpdateTask($id: ID!, $status: String, $title: String, $priority: String) {
-    updateTask(id: $id, status: $status, title: $title, priority: $priority) {
+  mutation UpdateTask($id: ID!, $status: String, $title: String, $priority: String, $resourceLink: String) {
+    updateTask(id: $id, status: $status, title: $title, priority: $priority, resourceLink: $resourceLink) {
       id
       title
       status
       priority
+      resourceLink
     }
   }
 `;
@@ -185,12 +207,41 @@ const DELETE_TASK = gql`
 `;
 
 const UPDATE_QUALITY_GATE = gql`
-  mutation UpdateQualityGate($id: ID!, $status: String, $deliverablesJSON: String) {
-    updateQualityGate(id: $id, status: $status, deliverablesJSON: $deliverablesJSON) {
+  mutation UpdateQualityGate($id: ID!, $status: String, $deliverablesJSON: String, $resourceLink: String) {
+    updateQualityGate(id: $id, status: $status, deliverablesJSON: $deliverablesJSON, resourceLink: $resourceLink) {
       id
       status
       deliverables
+      resourceLink
     }
+  }
+`;
+
+const CREATE_ALLOCATION = gql`
+  mutation CreateAllocation($userId: ID!, $projectId: ID!, $allocationPercentage: Int!, $startDate: String!, $endDate: String!, $role: String) {
+    createAllocation(userId: $userId, projectId: $projectId, allocationPercentage: $allocationPercentage, startDate: $startDate, endDate: $endDate, role: $role) {
+      id
+      allocationPercentage
+      role
+    }
+  }
+`;
+
+const UPDATE_ALLOCATION = gql`
+  mutation UpdateAllocation($id: ID!, $allocationPercentage: Int, $role: String, $startDate: String, $endDate: String) {
+    updateAllocation(id: $id, allocationPercentage: $allocationPercentage, role: $role, startDate: $startDate, endDate: $endDate) {
+      id
+      allocationPercentage
+      role
+    }
+  }
+`;
+
+
+
+const DELETE_ALLOCATION = gql`
+  mutation DeleteAllocation($id: ID!) {
+    deleteAllocation(id: $id)
   }
 `;
 
@@ -208,6 +259,8 @@ const GET_USERS = gql`
       id
       firstName
       lastName
+      email
+      position
     }
   }
 `;
@@ -226,7 +279,12 @@ const ProjectDetails: React.FC = () => {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [editTaskOpen, setEditTaskOpen] = useState(false);
   const [currentPhaseId, setCurrentPhaseId] = useState<string | null>(null);
-  const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', status: 'todo', id: '' });
+  const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', status: 'todo', id: '', resourceLink: '' });
+
+  // State for Allocation Management
+  const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
+  const [allocationForm, setAllocationForm] = useState<any>({ userId: '', allocationPercentage: 50, role: '', startDate: '', endDate: '' });
+  const [editingAllocationId, setEditingAllocationId] = useState<string | null>(null);
 
   const { loading, error, data, refetch } = useQuery(GET_PROJECT, {
     variables: { id },
@@ -247,6 +305,10 @@ const ProjectDetails: React.FC = () => {
   const [deleteTask] = useMutation(DELETE_TASK, { onCompleted: () => refetch() });
 
   const [updateQuality] = useMutation(UPDATE_QUALITY_GATE, { onCompleted: () => refetch() });
+
+  const [createAllocation] = useMutation(CREATE_ALLOCATION, { onCompleted: () => { setAllocationDialogOpen(false); refetch(); } });
+  const [updateAllocation] = useMutation(UPDATE_ALLOCATION, { onCompleted: () => { setAllocationDialogOpen(false); refetch(); } });
+  const [deleteAllocation] = useMutation(DELETE_ALLOCATION, { onCompleted: () => refetch() });
 
 
   if (loading) return <Box sx={{ p: 4 }}>Loading...</Box>;
@@ -334,16 +396,14 @@ const ProjectDetails: React.FC = () => {
     }
   };
 
-  // --- Handlers ---
-
   const handleAddTaskClick = (phaseId: string) => {
     setCurrentPhaseId(phaseId);
-    setTaskForm({ title: '', priority: 'medium', status: 'todo', id: '' });
+    setTaskForm({ title: '', priority: 'medium', status: 'todo', id: '', resourceLink: '' });
     setNewTaskOpen(true);
   };
 
   const handleEditTaskClick = (task: any) => {
-    setTaskForm({ title: task.title, priority: task.priority, status: task.status, id: task.id });
+    setTaskForm({ title: task.title, priority: task.priority, status: task.status, id: task.id, resourceLink: task.resourceLink || '' });
     setEditTaskOpen(true);
   };
 
@@ -356,7 +416,8 @@ const ProjectDetails: React.FC = () => {
           title: taskForm.title,
           taskType: 'custom',
           priority: taskForm.priority,
-          status: 'todo'
+          status: 'todo',
+          resourceLink: taskForm.resourceLink
         }
       });
     } else if (editTaskOpen) {
@@ -365,14 +426,15 @@ const ProjectDetails: React.FC = () => {
           id: taskForm.id,
           title: taskForm.title,
           priority: taskForm.priority,
-          status: taskForm.status
+          status: taskForm.status,
+          resourceLink: taskForm.resourceLink
         }
       });
     }
   };
 
   const handleTaskToggle = (task: any) => {
-    const newStatus = task.status === 'completed' ? 'todo' : 'completed';
+    const newStatus = task.status.toLowerCase() === 'completed' ? 'todo' : 'completed';
     updateTask({ variables: { id: task.id, status: newStatus } });
   };
 
@@ -404,6 +466,76 @@ const ProjectDetails: React.FC = () => {
 
   const handleQualityStatusChange = (qmId: string, newStatus: string) => {
     updateQuality({ variables: { id: qmId, status: newStatus } });
+  };
+
+  const handleAddAllocation = () => {
+    setEditingAllocationId(null);
+    setAllocationForm({
+      userId: '',
+      allocationPercentage: 50,
+      role: '',
+      startDate: project.startDate ? project.startDate.split('T')[0] : '',
+      endDate: project.targetEndDate ? project.targetEndDate.split('T')[0] : ''
+    });
+    setAllocationDialogOpen(true);
+  };
+
+  const handleEditAllocation = (alloc: any) => {
+    setEditingAllocationId(alloc.id);
+    setAllocationForm({
+      userId: alloc.user.id,
+      allocationPercentage: alloc.allocationPercentage,
+      role: alloc.role || '',
+      startDate: alloc.startDate ? alloc.startDate.split('T')[0] : '',
+      endDate: alloc.endDate ? alloc.endDate.split('T')[0] : ''
+    });
+    setAllocationDialogOpen(true);
+  };
+
+
+
+  // ... (code continues) ...
+
+  const handleSaveAllocation = () => {
+    // Basic validation
+    if (!editingAllocationId && !allocationForm.userId) {
+      alert("Please select a user");
+      return;
+    }
+    if (!allocationForm.startDate || !allocationForm.endDate) {
+      alert("Please select start and end dates");
+      return;
+    }
+
+    const percentage = parseInt(allocationForm.allocationPercentage, 10);
+    const validPercentage = isNaN(percentage) ? 0 : percentage;
+
+    // Ensure dates are compatible with GraphQL DateTime scalar (ISO 8601)
+    // Input type="date" returns "YYYY-MM-DD". We append time to make it a valid ISO string.
+    const toISO = (dateStr: string) => {
+      if (!dateStr) return new Date().toISOString();
+      if (dateStr.includes('T')) return dateStr; // Already has time
+      return `${dateStr}T00:00:00.000Z`;
+    };
+
+    const vars = {
+      allocationPercentage: validPercentage,
+      role: allocationForm.role,
+      startDate: toISO(allocationForm.startDate),
+      endDate: toISO(allocationForm.endDate)
+    };
+
+    if (editingAllocationId) {
+      updateAllocation({ variables: { id: editingAllocationId, ...vars } });
+    } else {
+      createAllocation({ variables: { projectId: project.id, userId: allocationForm.userId, ...vars } });
+    }
+  };
+
+  const handleDeleteAllocation = (id: string) => {
+    if (window.confirm('Are you sure you want to remove this team member?')) {
+      deleteAllocation({ variables: { id } });
+    }
   };
 
 
@@ -481,7 +613,11 @@ const ProjectDetails: React.FC = () => {
                 <Box>
                   <Typography variant="caption" display="block" color="text.secondary">Target Date</Typography>
                   <Typography variant="body2" fontWeight={500}>
-                    {project.targetEndDate ? format(new Date(project.targetEndDate), 'MMM d, yyyy') : 'TBD'}
+                    {(() => {
+                      if (!project.targetEndDate) return 'TBD';
+                      const d = new Date(project.targetEndDate);
+                      return isNaN(d.getTime()) ? 'Invalid Date' : format(d, 'MMM d, yyyy');
+                    })()}
                   </Typography>
                 </Box>
               </Box>
@@ -496,9 +632,7 @@ const ProjectDetails: React.FC = () => {
           <Tab label="Overview" />
           <Tab label="Workflow" icon={<WorkflowIcon fontSize="small" />} iconPosition="start" />
           <Tab label="Quality Gates" icon={<VerifiedIcon fontSize="small" />} iconPosition="start" />
-          <Tab label="Requirements" icon={<AssignmentIcon fontSize="small" />} iconPosition="start" />
-          <Tab label="Test Cases" icon={<BugIcon fontSize="small" />} iconPosition="start" />
-          <Tab label="Deployments" icon={<RocketIcon fontSize="small" />} iconPosition="start" />
+          <Tab label="Team & Allocations" icon={<TeamIcon fontSize="small" />} iconPosition="start" />
         </Tabs>
       </Box>
 
@@ -513,14 +647,11 @@ const ProjectDetails: React.FC = () => {
             <Paper sx={{ p: 3, borderRadius: 2 }}>
               <Typography variant="h6" gutterBottom>Quick Actions</Typography>
               <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
-                <Button variant="outlined" startIcon={<AssignmentIcon />} onClick={() => setTabValue(3)}>
-                  View Requirements
-                </Button>
-                <Button variant="outlined" startIcon={<BugIcon />} onClick={() => setTabValue(4)}>
-                  View Test Cases
-                </Button>
                 <Button variant="outlined" startIcon={<WorkflowIcon />} onClick={() => setTabValue(1)}>
                   Update Workflow
+                </Button>
+                <Button variant="outlined" startIcon={<TeamIcon />} onClick={() => setTabValue(3)}>
+                  Manage Team
                 </Button>
               </Stack>
             </Paper>
@@ -590,17 +721,32 @@ const ProjectDetails: React.FC = () => {
                           <Paper variant="outlined" sx={{ p: 2, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                             <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                               <Checkbox
-                                checked={task.status === 'completed'}
+                                checked={task.status.toLowerCase() === 'completed'}
                                 color="success"
                                 onChange={() => handleTaskToggle(task)}
                               />
                               <Box>
-                                <Typography variant="subtitle2" sx={{ textDecoration: task.status === 'completed' ? 'line-through' : 'none', color: task.status === 'completed' ? 'text.secondary' : 'text.primary' }}>
+                                <Typography variant="subtitle2" sx={{ textDecoration: task.status.toLowerCase() === 'completed' ? 'line-through' : 'none', color: task.status.toLowerCase() === 'completed' ? 'text.secondary' : 'text.primary' }}>
                                   {task.title}
                                 </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
-                                  <Chip label={task.priority} size="small" color={task.priority === 'critical' ? 'error' : task.priority === 'high' ? 'warning' : 'default'} sx={{ height: 20, fontSize: '0.7rem' }} />
-                                  <Chip label={task.status} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                <Box sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center' }}>
+                                  <Chip
+                                    label={task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                                    size="small"
+                                    color={task.priority.toLowerCase() === 'critical' ? 'error' : task.priority.toLowerCase() === 'high' ? 'warning' : 'default'}
+                                    sx={{ height: 20, fontSize: '0.7rem' }}
+                                  />
+                                  <Chip
+                                    label={task.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{ height: 20, fontSize: '0.7rem' }}
+                                  />
+                                  {task.resourceLink && (
+                                    <IconButton size="small" component="a" href={task.resourceLink} target="_blank" color="primary" sx={{ p: 0.5 }}>
+                                      <LinkIcon style={{ fontSize: 16 }} />
+                                    </IconButton>
+                                  )}
                                 </Box>
                               </Box>
                             </Box>
@@ -680,23 +826,49 @@ const ProjectDetails: React.FC = () => {
                             color={qm.status === 'completed' ? 'success' : qm.status === 'in_progress' ? 'primary' : 'default'}
                             size="small"
                           />
+                          {qm.resourceLink && (
+                            <IconButton
+                              size="small"
+                              component="a"
+                              href={qm.resourceLink}
+                              target="_blank"
+                              color="primary"
+                              onClick={(e) => e.stopPropagation()}
+                              sx={{ ml: 2 }}
+                            >
+                              <LinkIcon />
+                            </IconButton>
+                          )}
                         </Box>
                       </AccordionSummary>
                       <AccordionDetails>
-                        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Typography variant="subtitle2">Update Status:</Typography>
-                          <TextField
-                            select
-                            size="small"
-                            value={qm.status}
-                            onChange={(e) => handleQualityStatusChange(qm.id, e.target.value)}
-                            sx={{ width: 150 }}
-                          >
-                            <MenuItem value="not_started">Not Started</MenuItem>
-                            <MenuItem value="in_progress">In Progress</MenuItem>
-                            <MenuItem value="blocked">Blocked</MenuItem>
-                            <MenuItem value="completed">Completed</MenuItem>
-                          </TextField>
+                        <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="subtitle2">Update Status:</Typography>
+                            <TextField
+                              select
+                              size="small"
+                              value={qm.status}
+                              onChange={(e) => handleQualityStatusChange(qm.id, e.target.value)}
+                              sx={{ width: 150 }}
+                            >
+                              <MenuItem value="not_started">Not Started</MenuItem>
+                              <MenuItem value="in_progress">In Progress</MenuItem>
+                              <MenuItem value="blocked">Blocked</MenuItem>
+                              <MenuItem value="completed">Completed</MenuItem>
+                            </TextField>
+                          </Box>
+
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1, ml: 2 }}>
+                            <Typography variant="subtitle2">Resource Link:</Typography>
+                            <TextField
+                              size="small"
+                              defaultValue={qm.resourceLink || ''}
+                              onBlur={(e) => updateQuality({ variables: { id: qm.id, resourceLink: e.target.value } })}
+                              placeholder="e.g., https://jira.com/..."
+                              fullWidth
+                            />
+                          </Box>
                         </Box>
                         <Divider sx={{ mb: 1 }} />
                         <Typography variant="subtitle2" gutterBottom>Deliverables:</Typography>
@@ -734,10 +906,144 @@ const ProjectDetails: React.FC = () => {
         </Paper>
       )}
 
-      {/* Other Tabs */}
-      {tabValue === 3 && <Box sx={{ p: 2 }}>Requirements List would go here. <Button onClick={() => navigate('/requirements')}>Go to Requirements Page</Button></Box>}
-      {tabValue === 4 && <Box sx={{ p: 2 }}>Test Cases would go here. <Button onClick={() => navigate('/test-cases')}>Go to Test Cases Page</Button></Box>}
-      {tabValue === 5 && <Box sx={{ p: 2 }}>Deployment History would go here. <Button onClick={() => navigate('/deployments')}>Go to Deployments Page</Button></Box>}
+      {/* Team & Allocations Tab */}
+      {tabValue === 3 && (
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box>
+              <Typography variant="h6">Team Allocations</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Manage team members allocated to this project.
+              </Typography>
+            </Box>
+            <Button variant="contained" startIcon={<TeamIcon />} onClick={handleAddAllocation}>
+              Add Member
+            </Button>
+          </Box>
+          <Divider sx={{ mb: 3 }} />
+
+          <Grid container spacing={3}>
+            {project.allocations && project.allocations.map((alloc: any) => (
+              <Grid item xs={12} md={6} key={alloc.id}>
+                <Paper variant="outlined" sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                      {alloc.user.firstName[0]}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        {alloc.user.firstName} {alloc.user.lastName}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {alloc.role || alloc.user.position || 'Member'}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 0.5 }}>
+                        <Chip
+                          label={`${alloc.allocationPercentage}%`}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {(() => {
+                            const start = new Date(alloc.startDate);
+                            const end = new Date(alloc.endDate);
+                            const sStr = isNaN(start.getTime()) ? '?' : format(start, 'MMM d');
+                            const eStr = isNaN(end.getTime()) ? '?' : format(end, 'MMM d, yyyy');
+                            return `${sStr} - ${eStr}`;
+                          })()}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                  <Box>
+                    <IconButton size="small" onClick={() => handleEditAllocation(alloc)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteAllocation(alloc.id)}>
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              </Grid>
+            ))}
+            {(!project.allocations || project.allocations.length === 0) && (
+              <Grid item xs={12}>
+                <Typography variant="body1" textAlign="center" color="text.secondary" sx={{ py: 4 }}>
+                  No team members allocated to this project yet.
+                </Typography>
+              </Grid>
+            )}
+          </Grid>
+        </Paper>
+      )}
+
+      {/* Allocation Dialog */}
+      <Dialog open={allocationDialogOpen} onClose={() => setAllocationDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editingAllocationId ? 'Edit Allocation' : 'Add Team Member'}</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {!editingAllocationId && (
+              <TextField
+                select
+                label="Select User"
+                value={allocationForm.userId}
+                onChange={(e) => setAllocationForm({ ...allocationForm, userId: e.target.value })}
+                fullWidth
+              >
+                {usersData?.users.map((user: any) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    {user.firstName} {user.lastName} ({user.email})
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+
+            <TextField
+              label="Role in Project"
+              value={allocationForm.role}
+              onChange={(e) => setAllocationForm({ ...allocationForm, role: e.target.value })}
+              fullWidth
+              placeholder="e.g. Lead Developer"
+            />
+
+            <Box>
+              <Typography gutterBottom>Allocation Percentage: {allocationForm.allocationPercentage}%</Typography>
+              <TextField
+                type="number"
+                value={allocationForm.allocationPercentage}
+                onChange={(e) => setAllocationForm({ ...allocationForm, allocationPercentage: e.target.value })}
+                fullWidth
+                inputProps={{ min: 0, max: 100 }}
+              />
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Start Date"
+                type="date"
+                value={allocationForm.startDate}
+                onChange={(e) => setAllocationForm({ ...allocationForm, startDate: e.target.value })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="End Date"
+                type="date"
+                value={allocationForm.endDate}
+                onChange={(e) => setAllocationForm({ ...allocationForm, endDate: e.target.value })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAllocationDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleSaveAllocation} variant="contained">Save Allocation</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Edit Project Dialog */}
       <Dialog open={openEditDialog} onClose={() => setOpenEditDialog(false)} maxWidth="sm" fullWidth>
@@ -758,6 +1064,94 @@ const ProjectDetails: React.FC = () => {
               value={editForm.description || ''}
               onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
             />
+            <TextField
+              select
+              label="Status"
+              value={editForm.status || 'planning'}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              fullWidth
+            >
+              {PROJECT_STATUSES.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="Progress (%)"
+              type="number"
+              value={editForm.progress}
+              onChange={(e) => setEditForm({ ...editForm, progress: e.target.value })}
+              fullWidth
+              inputProps={{ min: 0, max: 100 }}
+            />
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Start Date"
+                type="date"
+                value={editForm.startDate || ''}
+                onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                label="Target End Date"
+                type="date"
+                value={editForm.targetEndDate || ''}
+                onChange={(e) => setEditForm({ ...editForm, targetEndDate: e.target.value })}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Box>
+            <TextField
+              select
+              label="Strategic Objective"
+              value={editForm.objectiveId || ''}
+              onChange={(e) => setEditForm({ ...editForm, objectiveId: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              {objectivesData && objectivesData.objectives.map((obj: any) => (
+                <MenuItem key={obj.id} value={obj.id}>{obj.title}</MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Associated DVF"
+              value={editForm.dvfId || ''}
+              onChange={(e) => setEditForm({ ...editForm, dvfId: e.target.value })}
+              fullWidth
+            >
+              <MenuItem value=""><em>None</em></MenuItem>
+              {dvfsData && dvfsData.getDVFs.map((dvf: any) => (
+                <MenuItem key={dvf.id} value={dvf.id}>{dvf.title}</MenuItem>
+              ))}
+            </TextField>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                select
+                label="Project Owner"
+                value={editForm.ownerId || ''}
+                onChange={(e) => setEditForm({ ...editForm, ownerId: e.target.value })}
+                fullWidth
+              >
+                {usersData && usersData.users.map((user: any) => (
+                  <MenuItem key={user.id} value={user.id}>{user.firstName} {user.lastName}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Project Lead"
+                value={editForm.leadId || ''}
+                onChange={(e) => setEditForm({ ...editForm, leadId: e.target.value })}
+                fullWidth
+              >
+                <MenuItem value=""><em>None</em></MenuItem>
+                {usersData && usersData.users.map((user: any) => (
+                  <MenuItem key={user.id} value={user.id}>{user.firstName} {user.lastName}</MenuItem>
+                ))}
+              </TextField>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -789,6 +1183,13 @@ const ProjectDetails: React.FC = () => {
               <MenuItem value="high">High</MenuItem>
               <MenuItem value="critical">Critical</MenuItem>
             </TextField>
+            <TextField
+              label="Resource Link (Optional)"
+              fullWidth
+              value={taskForm.resourceLink || ''}
+              onChange={(e) => setTaskForm({ ...taskForm, resourceLink: e.target.value })}
+              placeholder="https://..."
+            />
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -833,6 +1234,13 @@ const ProjectDetails: React.FC = () => {
               <MenuItem value="high">High</MenuItem>
               <MenuItem value="critical">Critical</MenuItem>
             </TextField>
+            <TextField
+              label="Resource Link (Optional)"
+              fullWidth
+              value={taskForm.resourceLink || ''}
+              onChange={(e) => setTaskForm({ ...taskForm, resourceLink: e.target.value })}
+              placeholder="https://..."
+            />
           </Stack>
         </DialogContent>
         <DialogActions>

@@ -50,6 +50,6 @@ export class KeyResult {
     get progress(): number {
         if (this.targetValue === this.startValue) return 0;
         const progress = ((this.currentValue - this.startValue) / (this.targetValue - this.startValue)) * 100;
-        return Math.min(Math.max(progress, 0), 100); // Clamp between 0 and 100
+        return Math.max(progress, 0);
     }
 }

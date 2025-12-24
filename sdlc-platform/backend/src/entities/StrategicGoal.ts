@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
-import { ObjectType, Field, ID, registerEnumType } from 'type-graphql';
+import { ObjectType, Field, ID, registerEnumType, Float } from 'type-graphql';
 import { User } from './User';
 
 export enum GoalStatus {
@@ -42,6 +42,10 @@ export class StrategicGoal {
         inverseJoinColumn: { name: 'userId', referencedColumnName: 'id' }
     })
     owners: User[];
+
+    @Field(() => Float, { defaultValue: 100 })
+    @Column({ type: 'float', default: 100 })
+    targetAchievement: number;
 
     @Field()
     @CreateDateColumn()

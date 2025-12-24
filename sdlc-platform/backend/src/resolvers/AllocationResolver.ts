@@ -1,4 +1,4 @@
-import { Resolver, Query, Mutation, Arg, ID } from 'type-graphql';
+import { Resolver, Query, Mutation, Arg, ID, Int } from 'type-graphql';
 import { ProjectAllocation } from '../entities/ProjectAllocation';
 import { AppDataSource } from '../config/data-source';
 import { User } from '../entities/User';
@@ -21,9 +21,9 @@ export class AllocationResolver {
     async createAllocation(
         @Arg('userId', () => ID) userId: string,
         @Arg('projectId', () => ID) projectId: string,
-        @Arg('allocationPercentage') allocationPercentage: number,
-        @Arg('startDate') startDate: Date,
-        @Arg('endDate') endDate: Date,
+        @Arg('allocationPercentage', () => Int) allocationPercentage: number,
+        @Arg('startDate', () => String) startDate: string,
+        @Arg('endDate', () => String) endDate: string,
         @Arg('role', { nullable: true }) role?: string
     ): Promise<ProjectAllocation> {
         const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -36,8 +36,8 @@ export class AllocationResolver {
             user,
             project,
             allocationPercentage,
-            startDate,
-            endDate,
+            startDate: new Date(startDate),
+            endDate: new Date(endDate),
             role
         });
 
@@ -47,9 +47,9 @@ export class AllocationResolver {
     @Mutation(() => ProjectAllocation)
     async updateAllocation(
         @Arg('id', () => ID) id: string,
-        @Arg('allocationPercentage', { nullable: true }) allocationPercentage?: number,
-        @Arg('startDate', { nullable: true }) startDate?: Date,
-        @Arg('endDate', { nullable: true }) endDate?: Date,
+        @Arg('allocationPercentage', () => Int, { nullable: true }) allocationPercentage?: number,
+        @Arg('startDate', () => String, { nullable: true }) startDate?: string,
+        @Arg('endDate', () => String, { nullable: true }) endDate?: string,
         @Arg('role', { nullable: true }) role?: string,
         @Arg('isActive', { nullable: true }) isActive?: boolean
     ): Promise<ProjectAllocation> {
@@ -57,8 +57,8 @@ export class AllocationResolver {
         if (!allocation) throw new Error('Allocation not found');
 
         if (allocationPercentage !== undefined) allocation.allocationPercentage = allocationPercentage;
-        if (startDate !== undefined) allocation.startDate = startDate;
-        if (endDate !== undefined) allocation.endDate = endDate;
+        if (startDate !== undefined) allocation.startDate = new Date(startDate);
+        if (endDate !== undefined) allocation.endDate = new Date(endDate);
         if (role !== undefined) allocation.role = role || null;
         if (isActive !== undefined) allocation.isActive = isActive;
 

@@ -67,6 +67,7 @@ export class QualityResolver {
         @Arg('id', () => ID) id: string,
         @Arg('status', () => String, { nullable: true }) status?: string,
         @Arg('deliverablesJSON', () => String, { nullable: true }) deliverablesJSON?: string,
+        @Arg('resourceLink', { nullable: true }) resourceLink?: string,
         @Arg('notes', { nullable: true }) notes?: string
     ): Promise<QualityManagement> {
         const gate = await this.qmRepository.findOne({ where: { id } });
@@ -74,6 +75,7 @@ export class QualityResolver {
 
         if (status) gate.status = status as QMStatus;
         if (notes !== undefined) gate.notes = notes;
+        if (resourceLink !== undefined) gate.resourceLink = resourceLink;
         if (deliverablesJSON) {
             try {
                 gate.deliverables = JSON.parse(deliverablesJSON);

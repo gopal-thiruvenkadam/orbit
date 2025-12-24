@@ -76,7 +76,9 @@ export class ProjectResolver {
                 'dvf',
                 'workflowPhases',
                 'workflowPhases.tasks',
-                'qualityManagement'
+                'qualityManagement',
+                'allocations',
+                'allocations.user'
             ],
             order: {
                 workflowPhases: {
@@ -124,7 +126,7 @@ export class ProjectResolver {
 
         // Robust status handling: case-insensitive mapping to Enum
         if (data.status !== undefined) {
-            const normalizedStatus = data.status.toUpperCase();
+            const normalizedStatus = data.status.toLowerCase();
             if (Object.values(ProjectStatus).includes(normalizedStatus as ProjectStatus)) {
                 project.status = normalizedStatus as ProjectStatus;
             }

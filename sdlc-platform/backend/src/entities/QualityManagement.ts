@@ -72,9 +72,9 @@ export class QualityManagement {
   @Column({ type: 'uuid' })
   projectId: string;
 
-  @Field(() => ID)
-  @Column({ type: 'uuid' })
-  responsibleUserId: string;
+  @Field(() => ID, { nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  responsibleUserId: string | null;
 
   @Field(() => Date, { nullable: true })
   @Column({ type: 'date', nullable: true })
@@ -101,6 +101,10 @@ export class QualityManagement {
   @Field(() => String, { nullable: true })
   @Column({ type: 'text', nullable: true })
   notes: string | null;
+
+  @Field(() => String, { nullable: true })
+  @Column({ type: 'text', nullable: true })
+  resourceLink: string | null;
 
   @Field(() => Project)
   @ManyToOne(() => Project, { onDelete: 'CASCADE' })

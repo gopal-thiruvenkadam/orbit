@@ -122,17 +122,29 @@ export class WorkflowTask {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
+  @Field(() => String, { nullable: true })
+  @Column({ type: 'text', nullable: true })
+  resourceLink: string | null;
+
   @Field(() => String)
   @Column({ type: 'varchar', length: 100, default: 'custom' })
   taskType: string;
 
-  @Field(() => String)
   @Column({ type: 'varchar', length: 20 })
-  status: TaskStatus;
+  status: string;
 
-  @Field(() => TaskPriority)
   @Column({ type: 'varchar', length: 20 })
-  priority: TaskPriority;
+  priority: string;
+
+  @Field(() => TaskStatus, { name: 'status' })
+  get statusEnum(): TaskStatus {
+    return (this.status || 'todo').toLowerCase() as TaskStatus;
+  }
+
+  @Field(() => TaskPriority, { name: 'priority' })
+  get priorityEnum(): TaskPriority {
+    return (this.priority || 'medium').toLowerCase() as TaskPriority;
+  }
 
   @Field(() => ID)
   @Column({ type: 'uuid' })
@@ -189,7 +201,7 @@ export class WorkflowTask {
       [TaskStatus.COMPLETED]: 'green',
       [TaskStatus.BLOCKED]: 'red'
     };
-    return colors[this.status] || 'gray';
+    return colors[this.status as TaskStatus] || 'gray';
   }
 
   // Get priority color
@@ -201,6 +213,6 @@ export class WorkflowTask {
       [TaskPriority.HIGH]: 'orange',
       [TaskPriority.CRITICAL]: 'red'
     };
-    return colors[this.priority] || 'gray';
+    return colors[this.priority as TaskPriority] || 'gray';
   }
 }

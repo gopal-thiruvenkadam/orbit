@@ -28,7 +28,8 @@ import {
     Select,
     OutlinedInput,
     Checkbox,
-    ListItemText
+    ListItemText,
+    Slider
 } from '@mui/material';
 import {
     ExpandMore as ExpandMoreIcon,
@@ -53,6 +54,7 @@ const GET_OKR_DATA = gql`
       title
       description
       status
+      targetAchievement
       owners {
         id
         firstName
@@ -90,8 +92,8 @@ const GET_OKR_DATA = gql`
 `;
 
 const CREATE_GOAL = gql`
-  mutation CreateStrategicGoal($title: String!, $description: String, $ownerIds: [String!]) {
-    createStrategicGoal(title: $title, description: $description, ownerIds: $ownerIds) {
+  mutation CreateStrategicGoal($title: String!, $description: String, $ownerIds: [String!], $targetAchievement: Float) {
+    createStrategicGoal(title: $title, description: $description, ownerIds: $ownerIds, targetAchievement: $targetAchievement) {
       id
       title
       owners {
@@ -99,17 +101,19 @@ const CREATE_GOAL = gql`
         firstName
         lastName
       }
+      targetAchievement
     }
   }
 `;
 
 const UPDATE_GOAL = gql`
-  mutation UpdateStrategicGoal($id: String!, $title: String, $description: String, $status: String, $ownerIds: [String!]) {
-    updateStrategicGoal(id: $id, title: $title, description: $description, status: $status, ownerIds: $ownerIds) {
+  mutation UpdateStrategicGoal($id: String!, $title: String, $description: String, $status: String, $ownerIds: [String!], $targetAchievement: Float) {
+    updateStrategicGoal(id: $id, title: $title, description: $description, status: $status, ownerIds: $ownerIds, targetAchievement: $targetAchievement) {
       id
       title
       description
       status
+      targetAchievement
       owners {
         id
         firstName
@@ -157,6 +161,40 @@ const UPDATE_OBJECTIVE = gql`
 const DELETE_OBJECTIVE = gql`
   mutation DeleteObjective($id: String!) {
     deleteObjective(id: $id)
+  }
+`;
+
+const CREATE_KEY_RESULT = gql`
+  mutation CreateKeyResult($title: String!, $objectiveId: String!, $targetValue: Float!, $startValue: Float, $metricType: String) {
+    createKeyResult(title: $title, objectiveId: $objectiveId, targetValue: $targetValue, startValue: $startValue, metricType: $metricType) {
+      id
+      title
+      targetValue
+      startValue
+      currentValue
+      metricType
+      progress
+    }
+  }
+`;
+
+const UPDATE_KEY_RESULT = gql`
+  mutation UpdateKeyResult($id: String!, $title: String, $targetValue: Float, $startValue: Float, $currentValue: Float, $metricType: String) {
+    updateKeyResult(id: $id, title: $title, targetValue: $targetValue, startValue: $startValue, currentValue: $currentValue, metricType: $metricType) {
+      id
+      title
+      targetValue
+      startValue
+      currentValue
+      metricType
+      progress
+    }
+  }
+`;
+
+const DELETE_KEY_RESULT = gql`
+  mutation DeleteKeyResult($id: String!) {
+    deleteKeyResult(id: $id)
   }
 `;
 
@@ -211,14 +249,17 @@ const OKRDashboard: React.FC = () => {
     // Dialog States
     const [openGoalDialog, setOpenGoalDialog] = useState(false);
     const [openObjDialog, setOpenObjDialog] = useState(false);
+    const [openKRDialog, setOpenKRDialog] = useState(false);
 
     // Editing States
     const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
     const [editingObjId, setEditingObjId] = useState<string | null>(null);
+    const [editingKRId, setEditingKRId] = useState<string | null>(null);
 
     // Form States
-    const [goalForm, setGoalForm] = useState<{ title: string; description: string; status: string; ownerIds: string[] }>({ title: '', description: '', status: 'not_started', ownerIds: [] });
+    const [goalForm, setGoalForm] = useState<{ title: string; description: string; status: string; ownerIds: string[]; targetAchievement: number }>({ title: '', description: '', status: 'not_started', ownerIds: [], targetAchievement: 100 });
     const [objForm, setObjForm] = useState<{ title: string; description: string; strategicGoalId: string; cycle: string; status: string; ownerIds: string[] }>({ title: '', description: '', strategicGoalId: '', cycle: 'Q4 2024', status: 'not_started', ownerIds: [] });
+    const [krForm, setKRForm] = useState<{ title: string; objectiveId: string; startValue: number; targetValue: number; currentValue: number; metricType: string }>({ title: '', objectiveId: '', startValue: 0, targetValue: 100, currentValue: 0, metricType: 'number' });
 
     // Data
     const { loading, error, data, refetch } = useQuery(GET_OKR_DATA);
@@ -232,6 +273,10 @@ const OKRDashboard: React.FC = () => {
     const [updateObjective] = useMutation(UPDATE_OBJECTIVE, { onCompleted: () => { handleCloseObjDialog(); refetch(); } });
     const [deleteObjective] = useMutation(DELETE_OBJECTIVE, { onCompleted: () => refetch() });
 
+    const [createKeyResult] = useMutation(CREATE_KEY_RESULT, { onCompleted: () => { handleCloseKRDialog(); refetch(); } });
+    const [updateKeyResult] = useMutation(UPDATE_KEY_RESULT, { onCompleted: () => { handleCloseKRDialog(); refetch(); } });
+    const [deleteKeyResult] = useMutation(DELETE_KEY_RESULT, { onCompleted: () => refetch() });
+
 
     // --- Handlers ---
     const allUsers = data?.users || [];
@@ -242,12 +287,13 @@ const OKRDashboard: React.FC = () => {
             setGoalForm({
                 title: goal.title,
                 description: goal.description,
-                status: goal.status,
-                ownerIds: goal.owners ? goal.owners.map((o: any) => o.id) : []
+                status: (goal.status || 'not_started').toLowerCase(),
+                ownerIds: goal.owners ? goal.owners.map((o: any) => o.id) : [],
+                targetAchievement: goal.targetAchievement || 100
             });
         } else {
             setEditingGoalId(null);
-            setGoalForm({ title: '', description: '', status: 'not_started', ownerIds: [] });
+            setGoalForm({ title: '', description: '', status: 'not_started', ownerIds: [], targetAchievement: 100 });
         }
         setOpenGoalDialog(true);
     };
@@ -255,7 +301,7 @@ const OKRDashboard: React.FC = () => {
     const handleCloseGoalDialog = () => {
         setOpenGoalDialog(false);
         setEditingGoalId(null);
-        setGoalForm({ title: '', description: '', status: 'not_started', ownerIds: [] });
+        setGoalForm({ title: '', description: '', status: 'not_started', ownerIds: [], targetAchievement: 100 });
     };
 
     const handleSaveGoal = () => {
@@ -326,6 +372,65 @@ const OKRDashboard: React.FC = () => {
         }
     };
 
+    const handleOpenKRDialog = (kr?: any, objectiveId?: string) => {
+        if (kr) {
+            setEditingKRId(kr.id);
+            setKRForm({
+                title: kr.title,
+                objectiveId: kr.objectiveId,
+                startValue: kr.startValue || 0,
+                targetValue: kr.targetValue,
+                currentValue: kr.currentValue || 0,
+                metricType: kr.metricType || 'number'
+            });
+        } else {
+            setEditingKRId(null);
+            setKRForm({
+                title: '',
+                objectiveId: objectiveId || '',
+                startValue: 0,
+                targetValue: 100,
+                currentValue: 0,
+                metricType: 'number'
+            });
+        }
+        setOpenKRDialog(true);
+    };
+
+    const handleCloseKRDialog = () => {
+        setOpenKRDialog(false);
+        setEditingKRId(null);
+        setKRForm({ title: '', objectiveId: '', startValue: 0, targetValue: 100, currentValue: 0, metricType: 'number' });
+    };
+
+    const handleSaveKR = () => {
+        if (editingKRId) {
+            updateKeyResult({
+                variables: {
+                    id: editingKRId,
+                    ...krForm,
+                    targetValue: parseFloat(krForm.targetValue as any),
+                    startValue: parseFloat(krForm.startValue as any),
+                    currentValue: parseFloat(krForm.currentValue as any)
+                }
+            });
+        } else {
+            createKeyResult({
+                variables: {
+                    ...krForm,
+                    targetValue: parseFloat(krForm.targetValue as any),
+                    startValue: parseFloat(krForm.startValue as any)
+                }
+            });
+        }
+    };
+
+    const handleDeleteKR = (id: string) => {
+        if (window.confirm('Are you sure you want to delete this Key Result?')) {
+            deleteKeyResult({ variables: { id } });
+        }
+    };
+
 
     const statusColors: any = {
         'not_started': 'default',
@@ -335,7 +440,7 @@ const OKRDashboard: React.FC = () => {
         'completed': 'primary'
     };
 
-    if (loading) return <Box sx={{ p: 4 }}>Loading OKRs...</Box>;
+    if (loading) return <Box sx={{ p: 4 }}>Loading CIP...</Box>;
     if (error) return <Box sx={{ p: 4 }}>Error: {error.message}</Box>;
 
     const goals = data?.strategicGoals || [];
@@ -346,7 +451,7 @@ const OKRDashboard: React.FC = () => {
             <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
                     <Typography variant="h4" fontWeight="800" gutterBottom>
-                        OKR Dashboard
+                        CIP Dashboard
                     </Typography>
                     <Typography variant="body1" color="text.secondary">
                         Track Strategic Goals, Objectives, and Key Results.
@@ -409,6 +514,12 @@ const OKRDashboard: React.FC = () => {
                                             color={statusColors[goal.status]}
                                             size="small"
                                             sx={{ fontWeight: 700, borderRadius: 1 }}
+                                        />
+                                        <Chip
+                                            label={`Target: ${goal.targetAchievement || 100}%`}
+                                            variant="outlined"
+                                            size="small"
+                                            sx={{ fontWeight: 600, borderRadius: 1, borderColor: alpha(theme.palette.text.primary, 0.2) }}
                                         />
                                         <Tooltip title="Edit Goal">
                                             <IconButton size="small" onClick={() => handleOpenGoalDialog(goal)}>
@@ -482,20 +593,31 @@ const OKRDashboard: React.FC = () => {
                                                 <AccordionDetails sx={{ bgcolor: alpha(theme.palette.action.hover, 0.05) }}>
                                                     <Grid container spacing={3}>
                                                         <Grid item xs={12} md={6}>
-                                                            <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                <KeyResultIcon fontSize="small" /> Key Results
-                                                            </Typography>
+                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <KeyResultIcon fontSize="small" /> Key Results
+                                                                </Typography>
+                                                                <Button size="small" startIcon={<AddIcon />} onClick={() => handleOpenKRDialog(null, obj.id)}>
+                                                                    Add
+                                                                </Button>
+                                                            </Box>
                                                             {obj.keyResults?.length > 0 ? (
                                                                 <Stack spacing={1}>
                                                                     {obj.keyResults.map((kr: any) => (
-                                                                        <Paper key={kr.id} variant="outlined" sx={{ p: 1.5 }}>
-                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                                        <Paper key={kr.id} variant="outlined" sx={{ p: 1.5, position: 'relative', '&:hover .kr-actions': { opacity: 1 } }}>
+                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5, pr: 6 }}>
                                                                                 <Typography variant="body2" fontWeight="500">{kr.title}</Typography>
-                                                                                <Typography variant="caption">
-                                                                                    {kr.currentValue} / {kr.targetValue}
+                                                                                <Box className="kr-actions" sx={{ opacity: 0, transition: 'opacity 0.2s', position: 'absolute', right: 4, top: 4, bgcolor: 'background.paper', borderRadius: 1, boxShadow: 1 }}>
+                                                                                    <IconButton size="small" onClick={() => handleOpenKRDialog(kr)}><EditIcon sx={{ fontSize: 14 }} /></IconButton>
+                                                                                    <IconButton size="small" color="error" onClick={() => handleDeleteKR(kr.id)}><DeleteIcon sx={{ fontSize: 14 }} /></IconButton>
+                                                                                </Box>
+                                                                            </Box>
+                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                                                                <LinearProgress variant="determinate" value={Math.min(kr.progress, 100)} sx={{ flexGrow: 1, mr: 2, height: 4, borderRadius: 2 }} color={kr.progress >= 100 ? "success" : "primary"} />
+                                                                                <Typography variant="caption" noWrap>
+                                                                                    {kr.currentValue} / {kr.targetValue} ({Math.round(kr.progress)}%)
                                                                                 </Typography>
                                                                             </Box>
-                                                                            <LinearProgress variant="determinate" value={kr.progress} sx={{ height: 4, borderRadius: 2 }} color={kr.progress >= 100 ? "success" : "primary"} />
                                                                         </Paper>
                                                                     ))}
                                                                 </Stack>
@@ -554,21 +676,37 @@ const OKRDashboard: React.FC = () => {
                             selectedIds={goalForm.ownerIds}
                             onChange={(ids: string[]) => setGoalForm({ ...goalForm, ownerIds: ids })}
                         />
-                        {editingGoalId && (
-                            <TextField
-                                select
-                                label="Status"
-                                fullWidth
-                                value={goalForm.status}
-                                onChange={e => setGoalForm({ ...goalForm, status: e.target.value })}
-                            >
-                                {GOAL_STATUSES.map(option => (
-                                    <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                    </MenuItem>
-                                ))}
-                            </TextField>
-                        )}
+
+                        <Box sx={{ px: 1, py: 1 }}>
+                            <Typography gutterBottom variant="caption" color="text.secondary">Target Achievement Percentile</Typography>
+                            <Slider
+                                value={goalForm.targetAchievement}
+                                onChange={(_, value) => setGoalForm({ ...goalForm, targetAchievement: value as number })}
+                                step={5}
+                                marks={[
+                                    { value: 80, label: '80%' },
+                                    { value: 100, label: '100%' },
+                                    { value: 125, label: '125%' }
+                                ]}
+                                min={50}
+                                max={125}
+                                valueLabelDisplay="auto"
+                            />
+                        </Box>
+
+                        <TextField
+                            select
+                            label="Status"
+                            fullWidth
+                            value={goalForm.status || 'not_started'}
+                            onChange={e => setGoalForm({ ...goalForm, status: e.target.value })}
+                        >
+                            {GOAL_STATUSES.map(option => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </TextField>
                     </Stack>
                 </DialogContent>
                 <DialogActions>
@@ -636,7 +774,63 @@ const OKRDashboard: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box>
+
+            {/* Create/Edit Key Result Dialog */}
+            <Dialog open={openKRDialog} onClose={handleCloseKRDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>{editingKRId ? 'Edit Key Result' : 'Create Key Result'}</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2} sx={{ mt: 1 }}>
+                        <TextField
+                            label="Key Result Title"
+                            fullWidth
+                            value={krForm.title}
+                            onChange={e => setKRForm({ ...krForm, title: e.target.value })}
+                        />
+                        <Stack direction="row" spacing={2}>
+                            <TextField
+                                label="Start Value"
+                                type="number"
+                                fullWidth
+                                value={krForm.startValue}
+                                onChange={e => setKRForm({ ...krForm, startValue: parseFloat(e.target.value) })}
+                            />
+                            <TextField
+                                label="Target Value"
+                                type="number"
+                                fullWidth
+                                value={krForm.targetValue}
+                                onChange={e => setKRForm({ ...krForm, targetValue: parseFloat(e.target.value) })}
+                            />
+                        </Stack>
+                        <TextField
+                            label="Current Value"
+                            type="number"
+                            fullWidth
+                            value={krForm.currentValue}
+                            onChange={e => setKRForm({ ...krForm, currentValue: parseFloat(e.target.value) })}
+                            helperText={krForm.targetValue !== krForm.startValue ? `Progress: ${Math.round(((krForm.currentValue - krForm.startValue) / (krForm.targetValue - krForm.startValue)) * 100)}%` : ''}
+                        />
+                        <TextField
+                            select
+                            label="Metric Type"
+                            fullWidth
+                            value={krForm.metricType}
+                            onChange={e => setKRForm({ ...krForm, metricType: e.target.value })}
+                        >
+                            <MenuItem value="number">Number</MenuItem>
+                            <MenuItem value="percentage">Percentage (%)</MenuItem>
+                            <MenuItem value="currency">Currency ($)</MenuItem>
+                        </TextField>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseKRDialog}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSaveKR} disabled={!krForm.title}>
+                        {editingKRId ? 'Save Changes' : 'Create Key Result'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box >
     );
 };
 

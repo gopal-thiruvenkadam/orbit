@@ -36,11 +36,11 @@ export class ProjectAllocation {
     @Column({ type: 'varchar', nullable: true })
     role: string | null;
 
-    @Field(() => Date)
+    @Field(() => String)
     @Column({ type: 'date' })
     startDate: Date;
 
-    @Field(() => Date)
+    @Field(() => String)
     @Column({ type: 'date' })
     endDate: Date;
 

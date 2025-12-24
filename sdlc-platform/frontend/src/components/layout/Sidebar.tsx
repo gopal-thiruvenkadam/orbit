@@ -115,18 +115,16 @@ const Sidebar: React.FC = () => {
         <List component="nav" sx={{ px: 0 }}>
           <ListItem disablePadding sx={{ width: 'auto' }}>
             <ListItemButton
-              selected={isActiveRoute('/okr')}
-              onClick={() => navigate('/okr')}
+              selected={isActiveRoute('/dvfs')}
+              onClick={() => navigate('/dvfs')}
               sx={listItemSx}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <TrendingUpIcon />
+                <VerifiedIcon />
               </ListItemIcon>
-              <ListItemText primary="OKRs" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+              <ListItemText primary="DVFs" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
             </ListItemButton>
           </ListItem>
-
-
 
           <ListItem disablePadding sx={{ width: 'auto' }}>
             <ListItemButton
@@ -141,6 +139,20 @@ const Sidebar: React.FC = () => {
             </ListItemButton>
           </ListItem>
 
+          <ListItem disablePadding sx={{ width: 'auto' }}>
+            <ListItemButton
+              selected={isActiveRoute('/okr')}
+              onClick={() => navigate('/okr')}
+              sx={listItemSx}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <TrendingUpIcon />
+              </ListItemIcon>
+              <ListItemText primary="CIP" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
+            </ListItemButton>
+          </ListItem>
+
+          {/* 
           <ListItem disablePadding sx={{ width: 'auto' }}>
             <ListItemButton
               selected={isActiveRoute('/requirements')}
@@ -179,19 +191,7 @@ const Sidebar: React.FC = () => {
               <ListItemText primary="Deployments" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
             </ListItemButton>
           </ListItem>
-
-          <ListItem disablePadding sx={{ width: 'auto' }}>
-            <ListItemButton
-              selected={isActiveRoute('/dvfs')}
-              onClick={() => navigate('/dvfs')}
-              sx={listItemSx}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <VerifiedIcon />
-              </ListItemIcon>
-              <ListItemText primary="DVFs" primaryTypographyProps={{ fontWeight: 500, fontSize: '0.95rem' }} />
-            </ListItemButton>
-          </ListItem>
+          */}
 
           <ListItem disablePadding sx={{ width: 'auto' }}>
             <ListItemButton

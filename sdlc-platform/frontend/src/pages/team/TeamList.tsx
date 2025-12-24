@@ -92,6 +92,17 @@ interface UserFormData {
   position: string;
 }
 
+const IMPORT_USERS = gql`
+  mutation ImportUsersFromCSV($csvContent: String!) {
+    importUsersFromCSV(csvContent: $csvContent) {
+      id
+      email
+      firstName
+      lastName
+    }
+  }
+`;
+
 const TeamList: React.FC = () => {
   const [tabValue, setTabValue] = useState(0);
   const [openDialog, setOpenDialog] = useState(false);
@@ -112,6 +123,32 @@ const TeamList: React.FC = () => {
   const [createUser] = useMutation(CREATE_USER);
   const [updateUser] = useMutation(UPDATE_USER);
   const [deleteUser] = useMutation(DELETE_USER);
+  const [importUsers] = useMutation(IMPORT_USERS, {
+    onCompleted: () => {
+      refetch();
+      alert('Users imported successfully!');
+    }
+  });
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        importUsers({ variables: { csvContent: content } });
+      };
+      reader.readAsText(file);
+    }
+    // Reset input
+    if (event.target) event.target.value = '';
+  };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -168,13 +205,6 @@ const TeamList: React.FC = () => {
             email: formData.email
           }
         });
-        // If creating, we might want to update the other fields too, but CreateUser only takes basic info currently.
-        // We'd need to update CreateUser or do a second call. 
-        // For now, let's assume CreateUser is basic and user can edit later for details, 
-        // OR better: update CreateUser to accept all fields.
-        // But for this step I kept CreateUser simple in previous step.
-        // Actually, I should probably have updated CreateUser mutation signature in backend if I wanted to set all fields at once.
-        // Let's stick to basic create for now.
       }
       setOpenDialog(false);
       refetch();
@@ -217,13 +247,29 @@ const TeamList: React.FC = () => {
             View and manage the project team members.
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          Add Member
-        </Button>
+        <Box>
+          <input
+            type="file"
+            accept=".csv"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+          <Button
+            variant="outlined"
+            onClick={handleImportClick}
+            sx={{ mr: 2 }}
+          >
+            Import CSV
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            Add Member
+          </Button>
+        </Box>
       </Box>
 
       <Paper sx={{ width: '100%', mb: 4 }}>

@@ -149,6 +149,7 @@ export class WorkflowResolver {
         @Arg('status', () => String, { defaultValue: 'todo' }) status: string,
         @Arg('priority', () => String, { defaultValue: 'medium' }) priority: string,
         @Arg('description', { nullable: true }) description?: string,
+        @Arg('resourceLink', { nullable: true }) resourceLink?: string,
         @Arg('assignedToId', () => ID, { nullable: true }) assignedToId?: string,
         @Arg('dueDate', { nullable: true }) dueDate?: Date
     ): Promise<WorkflowTask> {
@@ -157,9 +158,10 @@ export class WorkflowResolver {
             phaseId,
             title,
             taskType: taskType as any,
-            status: status as TaskStatus,
-            priority: priority as TaskPriority,
+            status: status.toLowerCase() as TaskStatus,
+            priority: priority.toLowerCase() as TaskPriority,
             description,
+            resourceLink,
             assignedToId,
             dueDate
         });
@@ -171,6 +173,7 @@ export class WorkflowResolver {
         @Arg('id', () => ID) id: string,
         @Arg('title', { nullable: true }) title?: string,
         @Arg('description', { nullable: true }) description?: string,
+        @Arg('resourceLink', { nullable: true }) resourceLink?: string,
         @Arg('status', () => String, { nullable: true }) status?: string,
         @Arg('priority', () => String, { nullable: true }) priority?: string,
         @Arg('assignedToId', () => ID, { nullable: true }) assignedToId?: string,
@@ -181,8 +184,9 @@ export class WorkflowResolver {
 
         if (title !== undefined) task.title = title;
         if (description !== undefined) task.description = description;
-        if (status !== undefined) task.status = status as TaskStatus;
-        if (priority !== undefined) task.priority = priority as TaskPriority;
+        if (resourceLink !== undefined) task.resourceLink = resourceLink;
+        if (status !== undefined) task.status = status.toLowerCase() as TaskStatus;
+        if (priority !== undefined) task.priority = priority.toLowerCase() as TaskPriority;
         if (assignedToId !== undefined) task.assignedToId = assignedToId;
         if (dueDate !== undefined) task.dueDate = dueDate;
 
